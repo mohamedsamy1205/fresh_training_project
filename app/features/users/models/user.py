@@ -14,6 +14,8 @@ class User(Base):
 
     phone_number = Column(String, nullable=True)
 
+    provider = Column(String, nullable=True)
+
     hashed_password = Column(String, nullable=True)  
 
     age = Column(Integer, nullable=True)
