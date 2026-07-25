@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.features.users.models.user import User
 from app.core.security import create_access_token
+from app.core.security import create_refresh_token
+from app.core.security import get_user
 from app.features.users.repository.user_repository import UserRepository
 
 
@@ -29,10 +31,22 @@ class AuthService:
     def login_with_google(db: Session, user_info: dict):
         user = AuthService.get_or_create_google_user(db, user_info)
 
-        token = create_access_token({
+        access_token = create_access_token({
+            "sub": user.email
+        })
+        refresh_token = create_refresh_token({
             "sub": user.email
         })
         return {
-            "access_token": token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "bearer"
         }
+
+    def refresh_token(token: str):
+        payload = get_user(token)
+        user_id = payload.get("sub")
+
+        new_access_token = create_access_token({"sub": user_id})
+
+        return {"access_token": new_access_token}

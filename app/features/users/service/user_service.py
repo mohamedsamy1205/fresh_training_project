@@ -49,3 +49,4 @@ class UserService:
 
         UserRepository.delete(db, user)
         return {"message": "User deleted"}
+
