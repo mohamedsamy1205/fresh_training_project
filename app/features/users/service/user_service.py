@@ -34,6 +34,13 @@ class UserService:
         return user
 
     @staticmethod
+    def get_users(db: Session,limit, skip, sort_by, order):
+        user = UserRepository.get_users(db, limit, skip, sort_by, order, )
+        if not user:
+            raise Exception("User not found")
+        return user
+
+    @staticmethod
     def update_user(db: Session, user_id: int, updates: UserUpdate):
         user = UserRepository.get_by_id(db, user_id)
         if not user:

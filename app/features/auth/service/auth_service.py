@@ -45,8 +45,13 @@ class AuthService:
 
     def refresh_token(token: str):
         payload = get_user(token)
-        user_id = payload.get("sub")
-
-        new_access_token = create_access_token({"sub": user_id})
-
-        return {"access_token": new_access_token}
+        email = payload.get("sub")
+        access_token = create_access_token({"sub": email})
+        refresh_token = create_refresh_token({
+            "sub": email
+        })
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }

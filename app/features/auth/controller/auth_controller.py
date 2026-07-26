@@ -39,8 +39,8 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     user_info = token.get("userinfo")
     
     service = AuthService.login_with_google(db, user_info)
-    access_value = service["token_type"] + " " + service["access_token"]
-    refresh_value = service["token_type"] + " " + service["refresh_token"]
+    access_value = service["access_token"]
+    refresh_value = service["refresh_token"]
     response.set_cookie(
             key="access_token",
             value= access_value,

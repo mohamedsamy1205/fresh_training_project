@@ -1,6 +1,7 @@
-from fastapi import HTTPException
+from fastapi import Request, Depends,HTTPException
 from fastapi.params import Depends
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
@@ -8,15 +9,12 @@ from app.core.database import SessionLocal
 from app.features.users.models.user import User
 from app.core.config import settings
 
-
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -42,22 +40,41 @@ def create_refresh_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+
+
+
+
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
 
-        if email is None:
+        if not email:
             raise HTTPException(status_code=401, detail="Invalid token")
-        
-        try:
-            user = db.query(User).filter(User.email == email).first()
-            return user
-        finally:
-            db.close()
+
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        return user
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+
+
 
 def get_user(token: str, db: Session):
     try:
