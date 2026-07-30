@@ -5,20 +5,11 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
-from app.core.database import SessionLocal
-from app.features.users.models.user import User
+from app.core.database import get_db
+from app.platform.users.models.user import User
 from app.core.config import settings
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password[:72])
@@ -76,7 +67,7 @@ def get_current_user(
 
 
 
-def get_user(token: str, db: Session):
+def get_user(token: str, db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email = payload.get("sub")

@@ -1,5 +1,5 @@
 from fastapi import Request, HTTPException, APIRouter
-from app.features.auth.service.auth_service from refresh_token
+from app.platform.auth.service.auth_service from refresh_token
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/refresh")
