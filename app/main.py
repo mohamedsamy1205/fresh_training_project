@@ -3,8 +3,8 @@ from app.core.database import Base, get_engine
 from app.core.config import settings
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from app.platform.users.controller import user_controller
-from app.platform.auth.controller import auth_controller
+from app.platform.users.router import user_router
+from app.platform.auth.router import auth_router
 
 app = FastAPI()
 app.add_middleware(
@@ -22,5 +22,5 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=get_engine())
 
-app.include_router(user_controller.router)
-app.include_router(auth_controller.router)
+app.include_router(user_router.router)
+app.include_router(auth_router.router)

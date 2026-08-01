@@ -4,6 +4,7 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi.responses import RedirectResponse
 from app.core.config import settings
 from app.platform.auth.service.auth_service import AuthService
+from app.core.dependency_chain import get_auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -29,16 +30,16 @@ async def google_login(request: Request):
 
 # 🔥 2. callback
 @router.get("/google/callback")
-async def google_callback(request: Request):
+async def google_callback(request: Request, service: AuthService = Depends(get_auth_service)):
     token = await oauth.google.authorize_access_token(request)
-    response = RedirectResponse(url="https://www.google.com/")
+    response = RedirectResponse(url="http://localhost:8000/docs")
     
 
     user_info = token.get("userinfo")
     
-    service = AuthService.login_with_google( user_info)
-    access_value = service["access_token"]
-    refresh_value = service["refresh_token"]
+    tokens = service.login_with_google( user_info)
+    access_value = tokens["access_token"]
+    refresh_value = tokens["refresh_token"]
     response.set_cookie(
             key="access_token",
             value= access_value,

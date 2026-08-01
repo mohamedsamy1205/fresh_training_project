@@ -1,5 +1,4 @@
 from fastapi import Depends
-from app.core.database import get_db
 from app.platform.users.models.user import User
 
 
