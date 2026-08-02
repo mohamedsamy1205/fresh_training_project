@@ -1,4 +1,3 @@
-from fastapi import Depends
 from app.platform.users.models.user import User
 
 

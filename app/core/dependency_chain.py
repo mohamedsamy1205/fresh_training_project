@@ -3,6 +3,8 @@ from app.core.database import get_db
 from app.platform.users.repository.user_repository import UserRepository
 from app.platform.users.service.user_service import UserService
 from app.platform.auth.service.auth_service import AuthService
+from app.business.wallet.service.wallet_service import WalletService
+from app.business.wallet.repository.wallet_repository import WalletRepository
 
 # ====================== USER SERVICE ======================
 
@@ -16,3 +18,10 @@ def get_user_service(repo=Depends(get_user_repo)):
 
 def get_auth_service(user_service: UserService = Depends(get_user_service)):
     return AuthService(user_service)
+
+# ====================== WALLET SERVICE ======================
+def get_wallet_repo(db=Depends(get_db)):
+    return WalletRepository(db)
+
+def get_wallet_service(repo=Depends(get_wallet_repo)):
+    return WalletService(repo)

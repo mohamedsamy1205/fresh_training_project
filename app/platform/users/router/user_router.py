@@ -1,4 +1,3 @@
-app/platform/users/router/user_router.py
 from fastapi import APIRouter, Depends, Query
 from app.core.dependency_chain import get_user_service
 from app.platform.users.service.user_service import UserService

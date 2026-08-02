@@ -54,3 +54,4 @@ async def google_callback(request: Request, service: AuthService = Depends(get_a
                 secure=False,  
                 samesite="lax"
             )
+    return response

@@ -1,8 +1,8 @@
-<<<<<<< HEAD
-from sqlalchemy.orm import Session
 from app.platform.users.repository.user_repository import UserRepository
 from app.platform.users.schemas.user import UserCreate, UserUpdate
 from passlib.context import CryptContext
+from app.common.enums import UserRole
+import uuid
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -18,11 +18,12 @@ class UserService:
         hashed_password = None
         if user.password:
             hashed_password = pwd_context.hash(user.password)
-
+        
         return self.repo.create({
             "name": user.name,
             "email": user.email,
             "hashed_password": hashed_password,
+            "role": UserRole.INVESTOR.value,
             "age": user.age,
             "provider": "local"
         })
@@ -33,9 +34,11 @@ class UserService:
             return existing
 
         return self.repo.create({
+            "uuid": uuid.uuid4(),
             "name": name,
             "email": email,
             "hashed_password": None,
+            "role": UserRole.INVESTOR.value,
             "age": None,
             "provider": "google"
         })
@@ -47,7 +50,7 @@ class UserService:
         return user
 
     def get_by_email(self, user_email: str):
-        return self.repo.get_by_email(user_email)  # 👈 هنعدل دي كمان تحت
+        return self.repo.get_by_email(user_email)
 
     def get_users(self, limit, skip, sort_by, order):
         return self.repo.get_users(limit, skip, sort_by, order)
@@ -57,7 +60,12 @@ class UserService:
         if not user:
             raise Exception("User not found")
 
-        return self.repo.update(user, updates.dict(exclude_unset=True))
+        updates_data = updates.model_dump(exclude_unset=True)
+
+        if "role" in updates_data and updates_data["role"]:
+            updates_data["role"] = updates_data["role"].lower()
+
+        return self.repo.update(user, updates_data)
 
     def delete_user(self, user_id: int):
         user = self.repo.get_by_id(user_id)

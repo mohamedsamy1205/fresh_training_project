@@ -1,11 +1,12 @@
 import uuid
 import enum 
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Column, Integer, String, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum as SqlEnum
 from app.core.database import Base
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
 from app.common.enums import UserRole
+
 
 class User(Base):
     __tablename__ = "users"
@@ -16,7 +17,7 @@ class User(Base):
         UUID(as_uuid=True),
         default=uuid.uuid4,
         unique=True,
-        nullable=False,
+        nullable=True,
         index=True
     )
 
@@ -31,8 +32,8 @@ class User(Base):
     hashed_password = Column(String, nullable=True)  
 
     role = Column(
-        Enum(UserRole, name="user_role"),
-        nullable=False,
+        SqlEnum(UserRole, values_callable=lambda enum: [e.value for e in enum]),
+        nullable=True,
         default=UserRole.INVESTOR
     )
 
