@@ -34,7 +34,7 @@ class User(Base):
     role = Column(
         SqlEnum(UserRole, values_callable=lambda enum: [e.value for e in enum]),
         nullable=True,
-        default=UserRole.INVESTOR
+        default=UserRole.INVESTOR.value
     )
 
     age = Column(Integer, nullable=True)

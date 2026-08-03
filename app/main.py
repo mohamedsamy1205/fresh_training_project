@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.platform.users.router import user_router
 from app.platform.auth.router import auth_router
 from app.business.wallet.router import wallet_router
+from app.business.transaction.router import transaction_router
 from app.core.models_loader import *
 
 app = FastAPI()
@@ -27,3 +28,4 @@ Base.metadata.create_all(bind=get_engine())
 app.include_router(user_router.router)
 app.include_router(auth_router.router)
 app.include_router(wallet_router.router)
+app.include_router(transaction_router.router)

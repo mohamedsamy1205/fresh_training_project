@@ -3,7 +3,7 @@ from app.core.dependency_chain import get_user_service
 from app.platform.users.service.user_service import UserService
 from app.platform.users.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.core.security import get_current_user
-from app.platform.users.models.user import User
+from app.platform.users.model.user import User
 from typing import List
 
 router = APIRouter(prefix="/users", tags=["Users"])

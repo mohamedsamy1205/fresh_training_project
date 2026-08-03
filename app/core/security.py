@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
 from app.core.database import get_db
-from app.platform.users.models.user import User
+from app.platform.users.model.user import User
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

@@ -1,4 +1,4 @@
-from app.platform.users.models.user import User
+from app.platform.users.model.user import User
 
 
 class UserRepository:

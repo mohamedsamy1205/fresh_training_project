@@ -2,6 +2,7 @@ import uuid
 from sqlalchemy import (
     Column,
     Numeric,
+    Enum,
     Integer,
     String,
     ForeignKey,
@@ -25,9 +26,15 @@ class Transaction(Base):
         index=True
     )
 
-    wallet_id = Column(UUID, ForeignKey("wallets.id"))
+    sender_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.uuid"),
+        nullable=False
+    )
 
-    amount = Column(Float, nullable=False)
+    wallet_id = Column(UUID, ForeignKey("wallets.uuid"))
+
+    amount = Column(Numeric(12, 2), nullable=False)
 
     type = Column(Enum(TransactionType))
 

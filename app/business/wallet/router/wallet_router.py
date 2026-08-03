@@ -5,8 +5,8 @@ from app.business.wallet.schema.wallet_schema import WalletCreate, WalletUpdate,
 from app.business.wallet.model.wallet import Wallet
 from uuid import UUID
 from typing import List
-from app.platform.users.models.user import User
 from app.business.wallet.service.wallet_service import WalletService
+from app.platform.users.model.user import User
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 

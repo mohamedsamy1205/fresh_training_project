@@ -1,4 +1,4 @@
-from app.platform.users.models.user import User
+from app.platform.users.model.user import User
 from app.core.security import create_access_token
 from app.core.security import create_refresh_token
 from app.core.security import get_user
