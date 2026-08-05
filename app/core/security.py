@@ -1,4 +1,4 @@
-from fastapi import Request, Depends,HTTPException
+from fastapi import Request, Depends, HTTPException, status
 from fastapi.params import Depends
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.core.database import get_db
 from app.platform.users.model.user import User
 from app.core.config import settings
+from app.common.enums import UserRole
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -64,7 +65,21 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+def require_admin(current_user = Depends(get_current_user)):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admins only"
+        )
+    return current_user
 
+def require_investor(current_user = Depends(get_current_user)):
+    if current_user.role != UserRole.INVESTOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Investors only"
+        )
+    return current_user
 
 
 def get_user(token: str, db: Session = Depends(get_db)):

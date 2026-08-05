@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy import (
     Column,
     Numeric,
-    Enum,
+    Enum as SqlEnum,
     Integer,
     String,
     ForeignKey,
@@ -26,20 +26,42 @@ class Transaction(Base):
         index=True
     )
 
-    sender_id = Column(
+    idempotency_key = Column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.uuid"),
+        nullable=True
+    )
+
+    wallet_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("wallets.uuid"),
+        nullable=False,
+        index=True
+    )
+
+    amount = Column(Numeric(18, 4), nullable=False)
+
+    currency = Column(String(3), nullable=False, default="USD")
+
+    type = Column(
+        SqlEnum(TransactionType, values_callable=lambda enum: [e.value for e in enum]),
         nullable=False
     )
 
-    wallet_id = Column(UUID, ForeignKey("wallets.uuid"))
-
-    amount = Column(Numeric(12, 2), nullable=False)
-
-    type = Column(Enum(TransactionType))
-
-    status = Column(Enum(TransactionStatus)) 
+    status = Column(
+        SqlEnum(TransactionStatus, values_callable=lambda enum: [e.value for e in enum]),
+        nullable=False,
+        default=TransactionStatus.PENDING.value
+    )
 
     description = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

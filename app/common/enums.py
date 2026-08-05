@@ -5,6 +5,10 @@ class UserRole(str, enum.Enum):
     ADMIN_DEV = "admin_dev"
     INVESTOR = "investor"
 
+class WalletType(str, enum.Enum):
+    USER = "user"
+    TREASURY = "treasury"
+
 class TransactionType(str, enum.Enum):
     DEPOSIT = "deposit"
     WITHDRAW = "withdraw"
@@ -14,3 +18,7 @@ class TransactionStatus(str, enum.Enum):
     PENDING = "pending"
     SUCCESS = "success"
     FAILED = "failed"
+
+class LedgerEntryType(str, enum.Enum):
+    DEBIT = "debit"
+    CREDIT = "credit"

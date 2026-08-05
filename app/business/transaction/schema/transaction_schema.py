@@ -10,7 +10,7 @@ class TransactionCreate(BaseModel):
     amount: Decimal
     type: TransactionType
     status: TransactionStatus = TransactionStatus.PENDING.value
-    sender_id: Optional[UUID] = None
+    user_id: Optional[UUID] = None
     description: Optional[str] = None
 
 
@@ -21,7 +21,7 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(BaseModel):
     uuid: UUID
-    sender_id: UUID
+    user_id: UUID
     wallet_id: UUID
     amount: float
     type: TransactionType

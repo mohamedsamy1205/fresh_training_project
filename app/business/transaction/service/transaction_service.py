@@ -12,12 +12,12 @@ class TransactionService():
             "amount": data.amount,
             "type": data.type,
             "status": data.status,
-            "sender_id": data.sender_id,
+            "user_id": data.sender_id,
             "description": data.description
         })
 
-    def find_by_senderId(self, sender_id: UUID):
-        return self.repo.find_by_senderId(sender_id)
+    def find_by_senderId(self, user_id: UUID):
+        return self.repo.find_by_senderId(user_id)
 
     def find_by_walletId(self, wallet_id: UUID):
         return self.repo.find_by_walletId(wallet_id)

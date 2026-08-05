@@ -15,7 +15,7 @@ class TransactionRepository():
         return transaction
     
     def find_by_walletId(self, wallet_id: UUID):
-        return self.db.query(Transaction).filter(Transaction.wallet_id == walletId).all()
+        return self.db.query(Transaction).filter(Transaction.wallet_id == wallet_id).all()
 
     def find_by_senderId(self, sender_id: UUID):
         return self.db.query(Transaction).filter(Transaction.sender_id == sender_id).all()
