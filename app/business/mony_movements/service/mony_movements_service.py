@@ -4,6 +4,12 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
+from app.core.exceptions import (
+    ResourceNotFoundException,
+    InsufficientBalanceException,
+    InvalidOperationException,
+    DuplicateOperationException
+)
 
 from app.business.wallet.model.wallet import Wallet
 from app.business.transaction.model.transaction import Transaction
@@ -41,14 +47,14 @@ class MoneyMovementsService:
         # -------------------------------------------------------------------------
         # Shared Helper & Query Optimization Methods
         # -------------------------------------------------------------------------
+
         def _validate_amount(self, amount: Decimal) -> Decimal:
             """Validates that transaction amount is strictly positive and formatted as Decimal."""
             if not isinstance(amount, Decimal):
                 amount = Decimal(str(amount))
             if amount <= Decimal("0.00"):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid transaction amount '{amount}'. Amount must be strictly greater than 0."
+                raise InvalidOperationException(
+                    f"Invalid transaction amount '{amount}'. Amount must be strictly greater than 0."
                 )
             return amount
 
@@ -78,11 +84,11 @@ class MoneyMovementsService:
                 .first()
             )
             if not wallet:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"User wallet not found for user ID: {user_id}"
+                raise ResourceNotFoundException(
+                    f"User wallet not found for user ID: {user_id}"
                 )
             return wallet
+
 
         def _lock_wallets_deterministically(self, wallet_id_1: int, wallet_id_2: int) -> Tuple[Wallet, Wallet]:
             """
@@ -580,10 +586,8 @@ class MoneyMovementsService:
                     # Balance validation ✅ (زيادة عن deposit)
                     # -----------------------------
                     if user_w_locked.balance < valid_amount:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="Insufficient user balance"
-                        )
+                        raise InsufficientBalanceException("Insufficient user balance")
+
 
                     # -----------------------------
                     # Update balances (✅ الفرق الوحيد)

@@ -1,4 +1,5 @@
 from app.business.wallet.model.wallet import Wallet
+from app.core.exceptions import ResourceNotFoundException
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
@@ -26,7 +27,8 @@ class WalletRepository:
         )
 
         if wallet is None:
-            raise Exception("Wallet not found")
+            raise ResourceNotFoundException("Wallet not found")
+
 
 
         wallet.balance = data["new_balance"]

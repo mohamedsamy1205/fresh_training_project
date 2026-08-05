@@ -8,9 +8,15 @@ from app.platform.auth.router import auth_router
 from app.business.wallet.router import wallet_router
 from app.business.transaction.router import transaction_router
 from app.business.mony_movements.router import mony_movements_router
+from app.business.projects.router import project_router
+from app.core.exception_handlers import register_exception_handlers
 from app.core.models_loader import *
 
 app = FastAPI()
+
+# Register global exception handlers
+register_exception_handlers(app)
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.SECRET_KEY  
@@ -30,4 +36,7 @@ app.include_router(user_router.router)
 app.include_router(auth_router.router)
 app.include_router(wallet_router.router)
 app.include_router(transaction_router.router)
-app.include_router(mony_movements_router.router)
+app.include_router(mony_movements_router.router)
+app.include_router(project_router.router)
+
+

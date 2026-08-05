@@ -33,3 +33,9 @@ def get_wallet_service(repo=Depends(get_wallet_repo)):
 def get_transaction_service(db = Depends(get_db)) -> TransactionService:
     repo = TransactionRepository(db)
     return TransactionService(repo)
+
+# ====================== PROJECT SERVICE ======================
+from app.business.projects.service.project_service import ProjectService
+
+def get_project_service(db = Depends(get_db)) -> ProjectService:
+    return ProjectService(db)
