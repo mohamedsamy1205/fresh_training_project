@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 from decimal import Decimal
 from app.common.enums import ProjectStatus, InvestmentRequestStatus
+from app.common.utils.money import MoneyAmount
 
 class ProjectCreate(BaseModel):
     name: str
@@ -11,11 +12,11 @@ class ProjectCreate(BaseModel):
     end_date: datetime
 
 class ProjectCloseRequest(BaseModel):
-    final_amount: Decimal = Field(..., gt=Decimal("0.00"), description="Final amount after project ends")
+    final_amount: MoneyAmount = Field(..., gt=Decimal("0.00"), description="Final amount after project ends")
 
 class CreateInvestmentRequest(BaseModel):
     wallet_id: UUID
-    amount: Decimal = Field(..., gt=Decimal("0.00"), description="Requested investment amount")
+    amount: MoneyAmount = Field(..., gt=Decimal("0.00"), description="Requested investment amount")
 
 class DistributeProfitsRequest(BaseModel):
     idempotency_key: str
@@ -25,7 +26,7 @@ class InvestmentRequestResponse(BaseModel):
     user_id: UUID
     project_id: UUID
     wallet_id: UUID
-    amount: Decimal
+    amount: MoneyAmount
     status: InvestmentRequestStatus
     created_at: datetime
     updated_at: datetime
@@ -38,7 +39,7 @@ class InvestmentResponse(BaseModel):
     user_id: UUID
     project_id: UUID
     wallet_id: UUID
-    amount: Decimal
+    amount: MoneyAmount
     created_at: datetime
 
     class Config:
@@ -49,8 +50,8 @@ class ProjectResponse(BaseModel):
     name: str
     start_date: datetime
     end_date: datetime
-    initial_amount: Decimal
-    final_amount: Optional[Decimal] = None
+    initial_amount: MoneyAmount
+    final_amount: Optional[MoneyAmount] = None
     status: ProjectStatus
     created_at: datetime
     updated_at: datetime
@@ -62,11 +63,11 @@ class ProjectAnalyticsResponse(BaseModel):
     project_id: UUID
     project_name: str
     project_status: ProjectStatus
-    initial_amount: Decimal
-    total_invested_amount: Decimal
+    initial_amount: MoneyAmount
+    total_invested_amount: MoneyAmount
     number_of_investments: int
     number_of_unique_investors: int
-    average_investment_amount: Decimal
+    average_investment_amount: MoneyAmount
 
     class Config:
         from_attributes = True

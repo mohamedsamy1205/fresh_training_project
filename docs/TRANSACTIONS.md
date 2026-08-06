@@ -70,31 +70,72 @@ All transaction history and creation endpoints are grouped under the `/investor/
 ---
 
 ### 2. GET `/investor/transactions/sender/{user_id}`
-- **Role / Access**: Investor Only (`require_investor`)
-- **Summary**: Get transactions by sender ID
-- **Description**: Retrieves all financial transactions initiated by a specific sender user UUID.
+- **Role / Access**: Authenticated Users (`get_current_user`)
+- **Summary**: Get paginated transactions by sender ID
+- **Description**: Retrieves paginated financial transactions initiated by a specific sender user UUID. Supports high-performance Keyset Cursor pagination (primary) and Limit-Offset pagination (fallback).
 - **Headers**: None
 - **Cookies**: `access_token` (Required)
 - **Path Parameters**:
   - `user_id` (`string (UUID)`, Required): UUID of the sender user.
-- **Response (`200 OK - List[TransactionResponse]`)**:
+- **Query Parameters**:
+  - `cursor` (`string`, Optional): Opaque Base64 string indicating position key for Keyset cursor pagination.
+  - `limit` (`integer`, Optional, Default: 20, Range: 1–100): Number of transactions to return (Cursor mode).
+  - `page` (`integer`, Optional, Default: 1): Page number (Offset mode fallback).
+  - `size` (`integer`, Optional, Default: 20, Range: 1–100): Items per page (Offset mode fallback).
+- **Response (`200 OK - PaginatedTransactionResponse`)**:
+
+*Cursor Mode Example:*
 ```json
-[
-  {
-    "uuid": "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
-    "user_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-    "wallet_id": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e",
-    "amount": 250.00,
-    "type": "transfer",
-    "status": "pending",
-    "description": "Peer-to-peer wallet transfer",
-    "created_at": "2026-08-05T11:45:00Z"
+{
+  "data": [
+    {
+      "uuid": "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
+      "user_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "wallet_id": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e",
+      "amount": 250.00,
+      "currency": "USD",
+      "type": "transfer",
+      "status": "pending",
+      "description": "Peer-to-peer wallet transfer",
+      "created_at": "2026-08-05T11:45:00Z"
+    }
+  ],
+  "pagination": {
+    "next_cursor": "eyJ0IjogIjIwMjYtMDgtMDVUMTE6NDU6MDAiLCAiaSI6ICI0MiJ9",
+    "limit": 20,
+    "has_next": true
   }
-]
+}
+```
+
+*Offset Mode Example (`?page=1&size=20`):*
+```json
+{
+  "data": [
+    {
+      "uuid": "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
+      "user_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "wallet_id": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e",
+      "amount": 250.00,
+      "currency": "USD",
+      "type": "transfer",
+      "status": "pending",
+      "description": "Peer-to-peer wallet transfer",
+      "created_at": "2026-08-05T11:45:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "size": 20,
+    "total": 120,
+    "total_pages": 6
+  }
+}
 ```
 - **Errors**:
   - `401 Unauthorized`: Not authenticated.
-  - `403 Forbidden`: Investor role required.
+  - `422 Unprocessable Entity`: Invalid UUID or parameter constraints violated.
+
 
 ---
 

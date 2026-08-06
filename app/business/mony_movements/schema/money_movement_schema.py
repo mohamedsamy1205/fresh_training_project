@@ -4,11 +4,14 @@ from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
 from app.common.enums import TransactionType, TransactionStatus, LedgerEntryType
+from app.common.utils.money import MoneyAmount
+
+import uuid
 
 class MoneyMovementRequest(BaseModel):
     user_id: UUID = Field(..., description="UUID of the user")
-    amount: Decimal = Field(..., gt=Decimal("0.00"), description="Positive decimal amount")
-    idempotency_key: str = Field(..., min_length=8, max_length=255, description="Unique key for request deduplication")
+    amount: MoneyAmount = Field(..., gt=Decimal("0.00"), description="Positive decimal amount")
+    idempotency_key: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique key for request deduplication")
     description: Optional[str] = Field(None, max_length=500)
 
 class DepositRequest(MoneyMovementRequest):
@@ -22,8 +25,8 @@ class LedgerEntryResponse(BaseModel):
     transaction_id: UUID
     wallet_id: UUID
     entry_type: str
-    amount: Decimal
-    balance_after: Decimal
+    amount: MoneyAmount
+    balance_after: MoneyAmount
     created_at: datetime
 
     class Config:
@@ -34,7 +37,7 @@ class TransactionResponse(BaseModel):
     idempotency_key: str
     user_id: Optional[UUID]
     wallet_id: UUID
-    amount: Decimal
+    amount: MoneyAmount
     currency: str
     type: TransactionType
     status: TransactionStatus
@@ -47,19 +50,10 @@ class TransactionResponse(BaseModel):
 
 class MoneyMovementResponse(BaseModel):
     success: bool
-
     duplicate: bool = False
-
     transaction_ids: List[UUID]
-
-    amount: Decimal
+    amount: MoneyAmount
     currency: str
-
     description: Optional[str] = None
-
     transactions: List[TransactionResponse]
-
     ledger_entries: List[LedgerEntryResponse]
-
-
-

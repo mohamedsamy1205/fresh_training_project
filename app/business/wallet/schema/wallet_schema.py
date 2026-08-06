@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from decimal import Decimal
 from uuid import UUID
+from app.common.utils.money import MoneyAmount
 
 
 class WalletCreate(BaseModel):
@@ -9,11 +10,11 @@ class WalletCreate(BaseModel):
 
 class WalletUpdate(BaseModel):
     Wallet_id: UUID
-    new_balance: Decimal
+    new_balance: MoneyAmount
 
 class WalletResponse(BaseModel):
     Wallet_id: UUID = Field(alias="uuid")
-    balance: Decimal
+    balance: MoneyAmount
     wallet_name: str = Field(alias="name")
 
     class Config:

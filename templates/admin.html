@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Investment Management</title>
+  
+  <!-- Bootstrap 5 CSS & Icons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="alert-container"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center" href="/admin">
+        <i class="bi bi-shield-lock-fill text-primary me-2"></i>
+        <span>InvestSys</span>&nbsp;Admin Portal
+      </a>
+      
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="adminNavbar">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" href="#section-projects"><i class="bi bi-folder me-1"></i> Projects</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#section-users"><i class="bi bi-people me-1"></i> Users</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#section-movements"><i class="bi bi-arrow-left-right me-1"></i> Movements</a>
+          </li>
+        </ul>
+        
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+            <i class="bi bi-person-badge me-1"></i> <span id="admin-user-name">Admin User</span>
+          </span>
+          <button class="btn btn-outline-light btn-sm" onclick="logout()">
+            <i class="bi bi-box-arrow-right me-1"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container-fluid py-4 px-lg-5">
+    
+    <div class="row g-4 mb-4">
+      
+      <!-- 1. Create Project Card -->
+      <div class="col-lg-4" id="section-create-project">
+        <div class="card dashboard-card h-100">
+          <div class="card-header-custom">
+            <span><i class="bi bi-plus-square text-primary me-2"></i>Create Project</span>
+          </div>
+          <div class="card-body">
+            <form id="form-create-project" onsubmit="handleCreateProject(event)">
+              <div class="mb-3">
+                <label for="project-name" class="form-label fw-semibold">Project Name</label>
+                <input type="text" id="project-name" class="form-control" placeholder="e.g. Solar Energy Expansion" required>
+              </div>
+              <button type="submit" id="btn-create-project" class="btn btn-custom-primary w-100">
+                <i class="bi bi-plus-circle me-1"></i> Create Project
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Projects List Table Card -->
+      <div class="col-lg-8" id="section-projects">
+        <div class="card dashboard-card h-100">
+          <div class="card-header-custom">
+            <span><i class="bi bi-kanban me-2"></i>Investment Projects</span>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadProjects()">
+              <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>Project Name</th>
+                    <th>UUID</th>
+                    <th>Initial Capital</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="projects-list">
+                  <!-- Populated dynamically via admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Users & Wallets Row -->
+    <div class="row g-4 mb-4" id="section-users">
+      
+      <!-- 2. List Users Card -->
+      <div class="col-lg-6">
+        <div class="card dashboard-card">
+          <div class="card-header-custom">
+            <span><i class="bi bi-people-fill me-2"></i>System Users</span>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadUsers()">
+              <i class="bi bi-arrow-clockwise"></i> Refresh Users
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 350px;">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>User Name</th>
+                    <th>UUID</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="users-list">
+                  <!-- Populated dynamically via admin.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Show User Wallets Card -->
+      <div class="col-lg-6">
+        <div class="card dashboard-card">
+          <div class="card-header-custom">
+            <span id="selected-user-name"><i class="bi bi-wallet2 me-2"></i>User Wallets</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 350px;">
+              <table class="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>Wallet Name</th>
+                    <th>Balance</th>
+                    <th>Wallet UUID</th>
+                  </tr>
+                </thead>
+                <tbody id="user-wallets-list">
+                  <tr>
+                    <td colspan="3" class="text-center text-muted py-4">Click "View Wallets" on any user above to inspect balance.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 4. Deposit / Withdraw Card -->
+    <div class="row g-4" id="section-movements">
+      <div class="col-12">
+        <div class="card dashboard-card">
+          <div class="card-header-custom">
+            <span><i class="bi bi-currency-dollar text-success me-2"></i>Deposit & Withdraw Funds</span>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="movement-user-id" class="form-label fw-semibold">Target User</label>
+                <select id="movement-user-id" class="form-select" onchange="handleUserSelectedForMovement(this.value)">
+                  <option value="">Select User...</option>
+                </select>
+              </div>
+              
+              <div class="col-md-4">
+                <label for="movement-wallet-id" class="form-label fw-semibold">Target Wallet</label>
+                <select id="movement-wallet-id" class="form-select">
+                  <option value="">Select User First...</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label for="movement-amount" class="form-label fw-semibold">Amount ($)</label>
+                <input type="number" id="movement-amount" class="form-control" placeholder="e.g. 100.00" step="0.01" min="0.01">
+              </div>
+
+              <div class="col-12">
+                <label for="movement-description" class="form-label fw-semibold">Description (Optional)</label>
+                <input type="text" id="movement-description" class="form-control" placeholder="e.g. Initial balance deposit">
+              </div>
+
+              <div class="col-12 d-flex gap-3 mt-4">
+                <button type="button" id="btn-deposit" class="btn btn-success flex-fill py-2 fw-semibold" onclick="handleMoneyMovement('deposit')">
+                  <i class="bi bi-arrow-down-circle me-1"></i> Deposit Funds
+                </button>
+                <button type="button" id="btn-withdraw" class="btn btn-danger flex-fill py-2 fw-semibold" onclick="handleMoneyMovement('withdraw')">
+                  <i class="bi bi-arrow-up-circle me-1"></i> Withdraw Funds
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bootstrap JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Global Main & Page Scripts -->
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

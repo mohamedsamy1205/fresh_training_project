@@ -48,7 +48,8 @@ app/
 | **Auth** | `app/platform/auth` | OAuth2 Google login and JWT refresh token management |
 | **Users** | `app/platform/users` | User CRUD operations and role assignment |
 | **Wallets** | `app/business/wallet` | Investor wallet creation and balance tracking |
-| **Transactions** | `app/business/transaction` | Transaction history, sender queries, and wallet logs |
+| **Transactions** | `app/business/transaction` | Transaction history, sender queries, and paginated wallet logs |
+| **Pagination** | `app/common/pagination` | Reusable Keyset (Cursor) and Limit-Offset pagination helper module |
 | **Money Movements** | `app/business/mony_movements` | Idempotent treasury deposit and withdrawal operations with double-entry accounting |
 | **Projects** | `app/business/projects` | Project creation, analytics, investment requests, project closing, and profit distribution |
 

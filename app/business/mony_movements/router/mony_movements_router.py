@@ -64,3 +64,41 @@ def withdraw(
         idempotency_key=request.idempotency_key,
         description=request.description
     )
+
+
+@router.post(
+    "/deposit",
+    response_model=MoneyMovementResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Deposit funds alias"
+)
+def deposit_alias(
+    request: DepositRequest,
+    service: MoneyMovementsService = Depends(get_money_movement_service),
+    current_user: User = Depends(require_admin)
+):
+    return service.deposit(
+        user_id=request.user_id,
+        amount=request.amount,
+        idempotency_key=request.idempotency_key,
+        description=request.description
+    )
+
+
+@router.post(
+    "/withdraw",
+    response_model=MoneyMovementResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Withdraw funds alias"
+)
+def withdraw_alias(
+    request: WithdrawRequest,
+    service: MoneyMovementsService = Depends(get_money_movement_service),
+    current_user: User = Depends(require_admin)
+):
+    return service.withdraw(
+        user_id=request.user_id,
+        amount=request.amount,
+        idempotency_key=request.idempotency_key,
+        description=request.description
+    )

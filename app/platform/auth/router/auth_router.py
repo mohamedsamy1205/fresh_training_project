@@ -49,9 +49,8 @@ async def google_login(request: Request):
 )
 async def google_callback(request: Request, service: AuthService = Depends(get_auth_service)):
     token = await oauth.google.authorize_access_token(request)
-    response = RedirectResponse(url="http://localhost:8000/docs")
+    response = RedirectResponse(url="/")
     
-
     user_info = token.get("userinfo")
     
     tokens = service.login_with_google(user_info)
@@ -72,3 +71,33 @@ async def google_callback(request: Request, service: AuthService = Depends(get_a
         samesite="lax"
     )
     return response
+
+
+from fastapi import Response
+from app.core.security import get_current_user
+from app.platform.users.model.user import User
+
+@router.get(
+    "/me",
+    summary="Get current logged in user details",
+    description="Returns user profile and role for auto-auth check."
+)
+def get_me(current_user: User = Depends(get_current_user)):
+    role_str = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    return {
+        "uuid": str(current_user.uuid),
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": role_str
+    }
+
+
+@router.post(
+    "/logout",
+    summary="Logout user",
+    description="Clears access and refresh token HttpOnly cookies."
+)
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out successfully"}

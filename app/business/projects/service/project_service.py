@@ -246,8 +246,8 @@ class ProjectService:
                 "status": inv_request.status,
                 "investment_id": str(investment.uuid),
                 "transaction_id": str(tx.uuid),
-                "amount": float(valid_amount),
-                "project_initial_amount": float(project.initial_amount)
+                "amount": valid_amount,
+                "project_initial_amount": project.initial_amount
             }
 
         except AppException:
@@ -488,11 +488,11 @@ class ProjectService:
                         "investment_id": str(inv.uuid),
                         "user_id": str(inv.user_id),
                         "wallet_id": str(inv.wallet_id),
-                        "investment_amount": float(inv.amount),
-                        "gross_profit": float(investor_gross_profit),
-                        "company_fee": float(company_fee),
-                        "net_profit": float(investor_net_profit),
-                        "total_payout": float(investor_total_payout)
+                        "investment_amount": inv.amount,
+                        "gross_profit": investor_gross_profit,
+                        "company_fee": company_fee,
+                        "net_profit": investor_net_profit,
+                        "total_payout": investor_total_payout
                     })
 
                 project.status = ProjectStatus.DISTRIBUTED.value
@@ -504,11 +504,11 @@ class ProjectService:
                 "success": True,
                 "is_duplicate": False,
                 "project_id": str(project.uuid),
-                "total_initial_amount": float(total_initial),
-                "total_final_amount": float(total_final),
-                "total_profit": float(total_profit),
-                "total_company_fee_collected": float(total_company_fee_collected),
-                "total_returned_to_investors": float(total_returned_to_investors),
+                "total_initial_amount": total_initial,
+                "total_final_amount": total_final,
+                "total_profit": total_profit,
+                "total_company_fee_collected": total_company_fee_collected,
+                "total_returned_to_investors": total_returned_to_investors,
                 "distributions": distributions
             }
 

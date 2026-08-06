@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
 from uuid import UUID
-from app.core.security import require_investor
-from app.core.dependency_chain import get_transaction_service
+from app.core.security import require_investor, get_current_user
+from app.core.dependency_chain import get_transaction_controller
 from app.business.transaction.schema.transaction_schema import (
     TransactionCreate,
-    TransactionResponse
+    TransactionResponse,
+    PaginatedTransactionResponse
 )
-from app.business.transaction.service.transaction_service import TransactionService
+from app.business.transaction.controller.transaction_controller import TransactionController
+from app.common.pagination import PaginationParams
 from app.platform.users.model.user import User
 
 router = APIRouter(prefix="/investor/transactions", tags=["Investor Transactions"])
@@ -16,51 +18,29 @@ router = APIRouter(prefix="/investor/transactions", tags=["Investor Transactions
     "",
     response_model=TransactionResponse,
     summary="Create transaction",
-    description="""
-    Investor endpoint.
-
-    Creates a new financial transaction between investor wallets.
-    """
+    description="Creates a new financial transaction between investor wallets."
 )
 def create_transaction(
     data: TransactionCreate,
-    service: TransactionService = Depends(get_transaction_service),
+    controller: TransactionController = Depends(get_transaction_controller),
     current_user: User = Depends(require_investor)
 ):
-    return service.create(data)
+    return controller.create_transaction(data)
 
 
 @router.get(
-    "/sender/{user_id}",
-    response_model=list[TransactionResponse],
-    summary="Get transactions by sender ID",
+    "/user/{user_id}",
+    response_model=PaginatedTransactionResponse,
+    summary="Get paginated transactions by sender ID",
     description="""
-    Investor endpoint.
-
-    Retrieves all transactions initiated by a specific sender user ID.
+    Retrieves transactions initiated by a specific sender user ID.
+    Supports high-performance Keyset Cursor pagination (primary) and Limit-Offset pagination (fallback).
     """
 )
 def get_by_sender(
     user_id: UUID,
-    service: TransactionService = Depends(get_transaction_service),
-    current_user: User = Depends(require_investor)
+    params: PaginationParams = Depends(),
+    controller: TransactionController = Depends(get_transaction_controller),
+    current_user: User = Depends(get_current_user)
 ):
-    return service.find_by_senderId(user_id)
-
-
-@router.get(
-    "/wallet/{wallet_id}",
-    response_model=list[TransactionResponse],
-    summary="Get transactions by wallet ID",
-    description="""
-    Investor endpoint.
-
-    Retrieves transaction history for a specified wallet ID.
-    """
-)
-def get_by_wallet(
-    wallet_id: UUID,
-    service: TransactionService = Depends(get_transaction_service),
-    current_user: User = Depends(require_investor)
-):
-    return service.find_by_walletId(wallet_id)
+    return controller.get_sender_transactions(user_id, params)

@@ -28,7 +28,7 @@ def create_user(
 
 
 @router.get(
-    "/{user_id}",
+    "/get/{user_id}",
     response_model=UserResponse,
     summary="Get user details",
     description="""
@@ -105,3 +105,15 @@ def delete_user(
     service: UserService = Depends(get_user_service)
 ):
     return service.delete_user(user_id)
+
+
+@router.get(
+    "/users",
+    response_model=List[UserResponse],
+    summary="Get all users alias"
+)
+def get_users_alias(
+    current_user: User = Depends(require_admin),
+    service: UserService = Depends(get_user_service)
+):
+    return service.get_users(limit=100, skip=0, sort_by="id", order="asc")

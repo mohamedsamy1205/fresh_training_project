@@ -145,7 +145,7 @@ class MoneyMovementsService:
                     "user_id": str(tx.user_id) if tx.user_id else None,
                     "type": tx.type,
                     "status": tx.status,
-                    "amount": float(tx.amount),
+                    "amount": tx.amount,
                     "currency": tx.currency,
                     "description": tx.description,
                     "created_at": (
@@ -161,8 +161,8 @@ class MoneyMovementsService:
                         "transaction_id": str(le.transaction_id),
                         "wallet_id": str(le.wallet_id),
                         "entry_type": le.entry_type,
-                        "amount": float(le.amount),
-                        "balance_after": float(le.balance_after),
+                        "amount": le.amount,
+                        "balance_after": le.balance_after,
                         "created_at": (
                             le.created_at.isoformat()
                             if le.created_at
@@ -703,8 +703,8 @@ class MoneyMovementsService:
                             "transaction_id": str(user_ledger.transaction_id),
                             "wallet_id": str(user_ledger.wallet_id),
                             "entry_type": user_ledger.entry_type,
-                            "amount": float(user_ledger.amount),
-                            "balance_after": float(user_ledger.balance_after),
+                            "amount": user_ledger.amount,
+                            "balance_after": user_ledger.balance_after,
                             "created_at": (
                                 user_ledger.created_at.isoformat()
                                 if user_ledger.created_at else None
@@ -715,8 +715,8 @@ class MoneyMovementsService:
                             "transaction_id": str(treasury_ledger.transaction_id),
                             "wallet_id": str(treasury_ledger.wallet_id),
                             "entry_type": treasury_ledger.entry_type,
-                            "amount": float(treasury_ledger.amount),
-                            "balance_after": float(treasury_ledger.balance_after),
+                            "amount": treasury_ledger.amount,
+                            "balance_after": treasury_ledger.balance_after,
                             "created_at": (
                                 treasury_ledger.created_at.isoformat()
                                 if treasury_ledger.created_at else None

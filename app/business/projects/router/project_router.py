@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, status
+from app.business.projects.model.project import Project
+from datetime import datetime, timedelta
+from typing import List
 from uuid import UUID
 from app.core.database import get_db
 from app.core.security import require_admin, require_investor
@@ -184,3 +187,21 @@ def create_investment_request(
 router = APIRouter()
 router.include_router(admin_router)
 router.include_router(investor_router)
+
+
+
+@router.get("/projects", response_model=List[ProjectResponse])
+def list_all_projects(db=Depends(get_db)):
+    return db.query(Project).all()
+
+@router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+def create_project_generic(
+    payload: dict,
+    service: ProjectService = Depends(get_project_service),
+    current_user: User = Depends(require_admin)
+):
+    name = payload.get("name")
+    start_date = payload.get("start_date") or datetime.utcnow()
+    end_date = payload.get("end_date") or (datetime.utcnow() + timedelta(days=365))
+    return service.create_project(name=name, start_date=start_date, end_date=end_date)
+

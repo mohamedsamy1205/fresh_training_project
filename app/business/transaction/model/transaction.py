@@ -6,7 +6,8 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
-    DateTime
+    DateTime,
+    Index
 )
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
@@ -15,6 +16,9 @@ from app.common.enums import TransactionType, TransactionStatus
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index("idx_transactions_user_created_id", "user_id", "created_at", "id"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 

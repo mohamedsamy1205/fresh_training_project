@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.core.dependency_chain import get_wallet_service
-from app.core.security import require_investor
+from app.core.security import require_investor, require_admin
 from app.business.wallet.schema.wallet_schema import WalletCreate, WalletUpdate, WalletResponse
 from app.business.wallet.model.wallet import Wallet
 from uuid import UUID
@@ -8,11 +8,11 @@ from typing import List
 from app.business.wallet.service.wallet_service import WalletService
 from app.platform.users.model.user import User
 
-router = APIRouter(prefix="/investor/wallet", tags=["Investor Wallet"])
+router = APIRouter(prefix="/wallet", tags=["Investor Wallet"])
 
 
 @router.get(
-    "/{user_id}",
+    "/admin/{user_id}",
     response_model=List[WalletResponse],
     summary="Get wallet by user ID",
     description="""
@@ -23,14 +23,14 @@ router = APIRouter(prefix="/investor/wallet", tags=["Investor Wallet"])
 )
 def get_by_user_id(
     user_id: UUID,
-    current_user: User = Depends(require_investor),
+    current_user: User = Depends(require_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
     return service.get_by_user_id(user_id)
 
 
 @router.post(
-    "",
+    "/admin",
     response_model=WalletResponse,
     summary="Create investor wallet",
     description="""
@@ -41,14 +41,14 @@ def get_by_user_id(
 )
 def create(
     data: WalletCreate,
-    current_user: User = Depends(require_investor),
+    current_user: User = Depends(require_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
     return service.create(data)
 
 
 @router.post(
-    "/update_blance",
+    "/admin/update_blance",
     response_model=WalletResponse,
     summary="Update wallet balance",
     description="""
@@ -59,7 +59,35 @@ def create(
 )
 def update_balance(
     data: WalletUpdate,
-    current_user: User = Depends(require_investor),
+    current_user: User = Depends(require_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
     return service.update_balance(data)
+
+
+from app.core.security import get_current_user
+
+@router.get(
+    "/wallets/me",
+    response_model=List[WalletResponse],
+    summary="Get current user wallet info"
+)
+def get_wallets_me(
+    current_user: User = Depends(get_current_user),
+    service: WalletService = Depends(get_wallet_service)
+):
+    return service.get_by_user_id(current_user.uuid)
+
+
+@router.get(
+    "/wallets",
+    response_model=List[WalletResponse],
+    summary="Get user wallets by user_id query parameter"
+)
+def get_wallets_by_query(
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: WalletService = Depends(get_wallet_service)
+):
+    return service.get_by_user_id(user_id)
+
