@@ -66,14 +66,9 @@ class MoneyMovementsService:
                 .first()
             )
             if not treasury:
-                treasury = Wallet(
-                    name="Company Treasury Vault",
-                    type=WalletType.TREASURY.value,
-                    currency="USD",
-                    balance=Decimal("10000000.00")
-                )
-                self.db.add(treasury)
-                self.db.flush()
+                 raise ResourceNotFoundException(
+                                    f"User company wallet not found"
+                                )
             return treasury
 
         def _get_user_wallet(self, user_id: UUID) -> Wallet:

@@ -106,9 +106,5 @@ def authorize_user_or_admin(
         return current_user
     
     if current_user.uuid != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized"
-        )
-
+        raise ForbiddenException("Access restricted to admins and same user")
     return current_user

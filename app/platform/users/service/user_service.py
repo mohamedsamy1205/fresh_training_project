@@ -1,3 +1,4 @@
+from app.core.exceptions import DuplicateOperationException, ResourceNotFoundException
 from app.platform.users.repository.user_repository import UserRepository
 from app.platform.users.schemas.user import UserCreate, UserUpdate
 from passlib.context import CryptContext
@@ -13,7 +14,7 @@ class UserService:
     def create_user(self, user: UserCreate):
         existing = self.repo.get_by_email(user.email)
         if existing:
-            raise Exception("Email already exists")
+            raise DuplicateOperationException("Email already exists")
 
         hashed_password = None
         if user.password:
@@ -46,7 +47,7 @@ class UserService:
     def get_user(self, user_id: int):
         user = self.repo.get_by_id(user_id)
         if not user:
-            raise Exception("User not found")
+            raise ResourceNotFoundException("User not found")
         return user
 
     def get_by_email(self, user_email: str):
@@ -58,7 +59,7 @@ class UserService:
     def update_user(self, user_id: int, updates: UserUpdate):
         user = self.repo.get_by_id(user_id)
         if not user:
-            raise Exception("User not found")
+            raise ResourceNotFoundException("User not found")
 
         updates_data = updates.model_dump(exclude_unset=True)
 
@@ -70,7 +71,7 @@ class UserService:
     def delete_user(self, user_id: int):
         user = self.repo.get_by_id(user_id)
         if not user:
-            raise Exception("User not found")
+            raise ResourceNotFoundException("User not found")
 
         self.repo.delete(user)
         return {"message": "User deleted"}
