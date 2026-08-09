@@ -51,9 +51,6 @@ class TransactionResponse(BaseModel):
 class MoneyMovementResponse(BaseModel):
     success: bool
     duplicate: bool = False
-    transaction_ids: List[UUID]
-    amount: MoneyAmount
-    currency: str
-    description: Optional[str] = None
-    transactions: List[TransactionResponse]
+
+    transaction: TransactionResponse
     ledger_entries: List[LedgerEntryResponse]

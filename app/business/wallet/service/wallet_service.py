@@ -13,11 +13,6 @@ class WalletService:
             "name": data.name
         })
 
-    def update_balance(self, data: WalletUpdate):
-        return self.repo.update_balance({
-            "Wallet_id": data.Wallet_id,
-            "new_balance": data.new_balance
-        })
 
     def get_by_user_id(self, user_id: UUID):
         return self.repo.get_by_user_id(user_id)

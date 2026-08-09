@@ -13,12 +13,6 @@ class TransactionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, data: dict) -> Transaction:
-        transaction = Transaction(**data)
-        self.db.add(transaction)
-        self.db.commit()
-        self.db.refresh(transaction)
-        return transaction
 
     def find_by_wallet_id(self, wallet_id: UUID) -> List[Transaction]:
         return self.db.query(Transaction).filter(Transaction.wallet_id == wallet_id).all()

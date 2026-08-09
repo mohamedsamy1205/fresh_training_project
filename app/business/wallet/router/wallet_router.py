@@ -22,10 +22,11 @@ router = APIRouter(prefix="/wallet", tags=["Investor Wallet"])
     """
 )
 def get_by_user_id(
+    user_id: UUID,
     current_user: User = Depends(authorize_user_or_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
-    return service.get_by_user_id(current_user.uuid)
+    return service.get_by_user_id(user_id)
 
 
 @router.post(
@@ -46,24 +47,6 @@ def create(
     return service.create(data)
 
 
-@router.post(
-    "/admin/update_blance",
-    response_model=WalletResponse,
-    summary="Update wallet balance",
-    description="""
-    Investor endpoint.
-
-    Updates the financial balance of an investor's wallet.
-    """
-)
-def update_balance(
-    data: WalletUpdate,
-    current_user: User = Depends(require_admin),
-    service: WalletService = Depends(get_wallet_service)
-):
-    return service.update_balance(data)
-
-
 from app.core.security import get_current_user
 
 @router.get(
@@ -72,7 +55,7 @@ from app.core.security import get_current_user
     summary="Get current user wallet info"
 )
 def get_wallets_me(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(authorize_user_or_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
     return service.get_by_user_id(current_user.uuid)

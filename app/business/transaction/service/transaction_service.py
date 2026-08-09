@@ -17,15 +17,6 @@ class TransactionService:
     def __init__(self, repo: TransactionRepository):
         self.repo = repo
 
-    def create(self, data: TransactionCreate) -> Transaction:
-        return self.repo.create({
-            "wallet_id": data.wallet_id,
-            "amount": data.amount,
-            "type": data.type,
-            "status": data.status,
-            "user_id": data.user_id,
-            "description": data.description
-        })
 
     def get_sender_transactions_paginated(
         self,

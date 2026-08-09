@@ -7,13 +7,6 @@ from app.common.enums import TransactionType, TransactionStatus
 from app.common.utils.money import MoneyAmount
 from app.common.pagination import PaginatedResponse
 
-class TransactionCreate(BaseModel):
-    wallet_id: UUID
-    amount: MoneyAmount
-    type: TransactionType
-    status: TransactionStatus = TransactionStatus.PENDING.value
-    user_id: Optional[UUID] = None
-    description: Optional[str] = None
 
 
 class TransactionUpdate(BaseModel):

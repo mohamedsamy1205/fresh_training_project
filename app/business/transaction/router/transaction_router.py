@@ -14,18 +14,6 @@ from app.platform.users.model.user import User
 router = APIRouter(prefix="/investor/transactions", tags=["Investor Transactions"])
 
 
-@router.post(
-    "",
-    response_model=TransactionResponse,
-    summary="Create transaction",
-    description="Creates a new financial transaction between investor wallets."
-)
-def create_transaction(
-    data: TransactionCreate,
-    controller: TransactionController = Depends(get_transaction_controller),
-    current_user: User = Depends(require_investor)
-):
-    return controller.create_transaction(data)
 
 
 @router.get(
