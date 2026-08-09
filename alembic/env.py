@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from app.core.config import Settings
 
-from app.core.base import Base
+from app.core.database import Base
 
 from app.core.models_loader import *
 

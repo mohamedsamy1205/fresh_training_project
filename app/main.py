@@ -14,9 +14,18 @@ from app.core.models_loader import *
 import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from app.core.redis import redis_client
 
 
 app = FastAPI()
+
+# redis check
+@app.on_event("startup")
+async def startup():
+    ok = await redis_client.ping()
+    if not ok:
+        raise Exception("ERROR:      Redis is not connected")
+    print("INFO:     Redis connected.") # TODO: replace this with structured logging
 
 # Register global exception handlers
 register_exception_handlers(app)
@@ -33,8 +42,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-Base.metadata.create_all(bind=get_engine())
 
 app.include_router(user_router.router)
 app.include_router(auth_router.router)

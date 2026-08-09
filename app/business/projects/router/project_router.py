@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List
 from uuid import UUID
 from app.core.database import get_db
-from app.core.security import require_admin, require_investor
+from app.core.security import require_admin, require_investor, get_current_user
 from app.platform.users.model.user import User
 from app.business.projects.schema.project_schema import (
     ProjectCreate,
@@ -191,7 +191,7 @@ router.include_router(investor_router)
 
 
 @router.get("/projects", response_model=List[ProjectResponse])
-def list_all_projects(db=Depends(get_db)):
+def list_all_projects(db=Depends(get_db), current_user: User = Depends(get_current_user)):
     return db.query(Project).all()
 
 @router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)

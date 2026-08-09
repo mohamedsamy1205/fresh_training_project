@@ -4,7 +4,6 @@
 
 let currentAdminUser = null;
 let allUsers = [];
-
 document.addEventListener("DOMContentLoaded", () => {
   initAdminDashboard();
 });
@@ -142,7 +141,7 @@ async function loadUsers() {
   container.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading users...</td></tr>`;
 
   try {
-    const res = await fetch("/users", {
+    const res = await fetch("/admin/users/users", {
       credentials: "include"
     });
 
@@ -196,7 +195,7 @@ async function inspectUserWallets(userId, userName) {
   }
 
   try {
-    const res = await fetch(`/wallets?user_id=${userId}`, {
+    const res = await fetch(`/wallet/admin/${userId}`, {
       credentials: "include"
     });
 
@@ -231,7 +230,7 @@ async function handleUserSelectedForMovement(userId) {
   walletSelect.innerHTML = `<option value="">Loading wallets...</option>`;
 
   try {
-    const res = await fetch(`/wallets?user_id=${userId}`, {
+    const res = await fetch(`/wallet/admin/${userId}`, {
       credentials: "include"
     });
 
@@ -262,7 +261,7 @@ async function handleMoneyMovement(type) {
     return;
   }
 
-  const endpoint = type === 'deposit' ? '/deposit' : '/withdraw';
+  const endpoint = type === 'deposit' ? '/admin/money-movements/deposit' : '/admin/money-movements/withdraw';
   const actionText = type === 'deposit' ? 'Depositing' : 'Withdrawing';
 
   const btn = document.getElementById(`btn-${type}`);

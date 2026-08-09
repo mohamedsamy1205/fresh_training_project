@@ -51,7 +51,7 @@ async function loadInvestorWallet() {
   if (balanceEl) balanceEl.textContent = "$--.--";
 
   try {
-    const res = await fetch("/wallets/me", {
+    const res = await fetch("/wallet/wallets/me", {
       credentials: "include"
     });
 
@@ -178,7 +178,7 @@ async function loadRecentTransactions(userId) {
   container.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">Loading transactions...</td></tr>`;
 
   try {
-    const res = await fetch(`/investor/transactions/sender/${userId}?page=1&limit=20`, {
+    const res = await fetch(`/investor/transactions/user/${userId}?page=1&limit=20`, {
       credentials: "include"
     });
 
