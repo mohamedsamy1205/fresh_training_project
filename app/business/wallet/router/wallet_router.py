@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.core.dependency_chain import get_wallet_service
-from app.core.security import require_investor, require_admin
+from app.core.security import require_investor, require_admin, authorize_user_or_admin
 from app.business.wallet.schema.wallet_schema import WalletCreate, WalletUpdate, WalletResponse
 from app.business.wallet.model.wallet import Wallet
 from uuid import UUID
@@ -22,11 +22,10 @@ router = APIRouter(prefix="/wallet", tags=["Investor Wallet"])
     """
 )
 def get_by_user_id(
-    user_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(authorize_user_or_admin),
     service: WalletService = Depends(get_wallet_service)
 ):
-    return service.get_by_user_id(user_id)
+    return service.get_by_user_id(current_user.uuid)
 
 
 @router.post(
@@ -77,17 +76,4 @@ def get_wallets_me(
     service: WalletService = Depends(get_wallet_service)
 ):
     return service.get_by_user_id(current_user.uuid)
-
-
-@router.get(
-    "/wallets",
-    response_model=List[WalletResponse],
-    summary="Get user wallets by user_id query parameter"
-)
-def get_wallets_by_query(
-    user_id: UUID,
-    current_user: User = Depends(get_current_user),
-    service: WalletService = Depends(get_wallet_service)
-):
-    return service.get_by_user_id(user_id)
 

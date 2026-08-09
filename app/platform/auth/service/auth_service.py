@@ -1,7 +1,6 @@
 from app.platform.users.model.user import User
 from app.core.security import create_access_token
 from app.core.security import create_refresh_token
-from app.core.security import get_user
 from app.platform.users.service.user_service import UserService
 
 class AuthService:
@@ -32,8 +31,7 @@ class AuthService:
             "token_type": "bearer"
         }
 
-    def refresh_token(self, token: str):
-        payload = get_user(token)
+    def refresh_token(self, payload):
         email = payload.get("sub")
 
         access_token = create_access_token({"sub": email})
