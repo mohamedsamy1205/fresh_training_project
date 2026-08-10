@@ -2,5 +2,7 @@
 __pycache__/
 *.pyc
 
+keys/
+
 txt.txt
 .vscode/

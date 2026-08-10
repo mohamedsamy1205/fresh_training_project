@@ -1,4 +1,5 @@
 from fastapi import Depends
+from app.core.redis import redis_client
 from app.core.database import get_db
 from app.platform.users.repository.user_repository import UserRepository
 from app.platform.users.service.user_service import UserService
@@ -47,3 +48,7 @@ from app.business.projects.service.project_service import ProjectService
 
 def get_project_service(db = Depends(get_db)) -> ProjectService:
     return ProjectService(db)
+
+# ====================== REDIS CLINT ======================
+def get_redis():
+    return redis_client

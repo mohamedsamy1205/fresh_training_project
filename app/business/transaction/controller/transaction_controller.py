@@ -1,7 +1,6 @@
 from uuid import UUID
 from app.business.transaction.service.transaction_service import TransactionService
 from app.business.transaction.schema.transaction_schema import (
-    TransactionCreate,
     TransactionResponse,
     PaginatedTransactionResponse
 )
@@ -13,9 +12,6 @@ class TransactionController:
     def __init__(self, service: TransactionService):
         self.service = service
 
-    def create_transaction(self, data: TransactionCreate) -> Transaction:
-        """Orchestrates transaction creation."""
-        return self.service.create(data)
 
     def get_sender_transactions(
         self,

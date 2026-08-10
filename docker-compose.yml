@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql://user:password@db:5432/fastapi_db
     volumes:
       - .:/app
+      - ./keys:/app/keys
 
 volumes:
   postgres_data:

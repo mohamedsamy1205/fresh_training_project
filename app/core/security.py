@@ -20,19 +20,32 @@ def hash_password(password: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
+def get_private_key():
+    with open(settings.PRIVATE_KEY_PATH, "r") as f:
+        PRIVATE_KEY = f.read()
+    if isinstance(PRIVATE_KEY, str):
+            PRIVATE_KEY = PRIVATE_KEY.encode()
+    return PRIVATE_KEY
+
+def get_public_key():
+    with open(settings.PUBLIC_KEY_PATH, "r") as f:
+        PUBLIC_KEY = f.read()
+    if isinstance(PUBLIC_KEY, str):
+        PUBLIC_KEY = PUBLIC_KEY.encode()
+    return PUBLIC_KEY
 
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(to_encode, get_private_key(), algorithm=settings.ALGORITHM, headers={"kid": "my-key-1"})
 
 def create_refresh_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=7)
 
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(to_encode, get_private_key(), algorithm=settings.ALGORITHM, headers={"kid": "my-key-1"})
 
 def get_user_from_refrsh_token(
     request: Request,
@@ -42,9 +55,8 @@ def get_user_from_refrsh_token(
 
     if not token:
         raise UnauthorizedException("Not authenticated")
-
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, get_public_key(), algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
 
         if not email:
@@ -71,7 +83,7 @@ def get_current_user(
         raise UnauthorizedException("Not authenticated")
 
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, get_public_key(), algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
 
         if not email:

@@ -3,7 +3,6 @@ from uuid import UUID
 from app.core.security import require_investor, get_current_user
 from app.core.dependency_chain import get_transaction_controller
 from app.business.transaction.schema.transaction_schema import (
-    TransactionCreate,
     TransactionResponse,
     PaginatedTransactionResponse
 )

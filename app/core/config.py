@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     SERVER_METADATA_URL: str
     SECRET_KEY: str
     ALGORITHM: str
+    PUBLIC_KEY_PATH: str
+    PRIVATE_KEY_PATH: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     MAIN_COMPANY_WALLET: UUID
 

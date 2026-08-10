@@ -2,7 +2,6 @@ from uuid import UUID
 from typing import Tuple, List, Union
 from app.business.transaction.repository.transaction_repository import TransactionRepository
 from app.business.transaction.schema.transaction_schema import (
-    TransactionCreate,
     TransactionResponse,
     PaginatedTransactionResponse
 )
