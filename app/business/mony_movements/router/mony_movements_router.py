@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from app.core.database import get_db
-from app.core.security import require_admin
+from app.core.store import require_admin
 from app.platform.users.model.user import User
 from app.business.mony_movements.schema.money_movement_schema import (
     DepositRequest,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from app.core.dependency_chain import get_user_service
 from app.platform.users.service.user_service import UserService
 from app.platform.users.schemas.user import UserCreate, UserUpdate, UserResponse
-from app.core.security import require_admin
+from app.core.store import require_admin
 from app.platform.users.model.user import User
 from typing import List
 

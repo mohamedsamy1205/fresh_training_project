@@ -8,13 +8,15 @@ from app.business.wallet.service.wallet_service import WalletService
 from app.business.wallet.repository.wallet_repository import WalletRepository
 from app.business.transaction.service.transaction_service import TransactionService
 from app.business.transaction.repository.transaction_repository import TransactionRepository
+from app.core.redis import get_redis
+
 
 # ====================== USER SERVICE ======================
 
-def get_user_repo(db=Depends(get_db)):
-    return UserRepository(db)
+def get_user_repo(db = Depends(get_db), redis=Depends(get_redis)):
+    return UserRepository(db,redis)
 
-def get_user_service(repo=Depends(get_user_repo)):
+def get_user_service(repo: UserRepository =Depends(get_user_repo)):
     return UserService(repo)
 
 # ====================== AUTH SERVICE ======================
@@ -49,6 +51,3 @@ from app.business.projects.service.project_service import ProjectService
 def get_project_service(db = Depends(get_db)) -> ProjectService:
     return ProjectService(db)
 
-# ====================== REDIS CLINT ======================
-def get_redis():
-    return redis_client

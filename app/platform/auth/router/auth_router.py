@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Response
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
 from app.core.config import settings
 from app.platform.auth.service.auth_service import AuthService
 from app.core.dependency_chain import get_auth_service
 from app.platform.auth.router import local_auth_router
+from app.core.store import get_current_user
+from app.platform.users.model.user import User
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -73,9 +75,7 @@ async def google_callback(request: Request, service: AuthService = Depends(get_a
     return response
 
 
-from fastapi import Response
-from app.core.security import get_current_user
-from app.platform.users.model.user import User
+
 
 @router.get(
     "/me",

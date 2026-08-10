@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.core.dependency_chain import get_wallet_service
-from app.core.security import require_investor, require_admin, authorize_user_or_admin
+from app.core.store import require_investor, require_admin, authorize_user_or_admin
 from app.business.wallet.schema.wallet_schema import WalletCreate, WalletUpdate, WalletResponse
 from app.business.wallet.model.wallet import Wallet
 from uuid import UUID
@@ -47,7 +47,6 @@ def create(
     return service.create(data)
 
 
-from app.core.security import get_current_user
 
 @router.get(
     "/wallets/me",

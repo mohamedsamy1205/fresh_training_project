@@ -11,6 +11,7 @@ httpx
 alembic
 itsdangerous
 idna==3.18
+requests
 redis[asyncio]
 psycopg2-binary==2.9.12
 pydantic==2.13.4

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List
 from uuid import UUID
 from app.core.database import get_db
-from app.core.security import require_admin, require_investor, get_current_user
+from app.core.store import require_admin, require_investor, get_current_user
 from app.platform.users.model.user import User
 from app.business.projects.schema.project_schema import (
     ProjectCreate,
