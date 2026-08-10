@@ -17,7 +17,7 @@ class TransactionService:
         self.repo = repo
 
 
-    def get_sender_transactions_paginated(
+    async def get_sender_transactions_paginated(
         self,
         user_id: UUID,
         params: PaginationParams
@@ -26,7 +26,7 @@ class TransactionService:
         Business logic for retrieving sender transactions with pagination.
         Handles default bounds and calls the database repository layer.
         """
-        items, meta = self.repo.get_by_sender_id_paginated(user_id, params)
+        items, meta = await self.repo.get_by_sender_id_paginated(user_id, params)
         # Convert ORM items to DTOs or pass items directly (handled by from_attributes=True)
         return PaginatedTransactionResponse(data=items, pagination=meta)
 

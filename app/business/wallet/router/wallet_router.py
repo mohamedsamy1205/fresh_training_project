@@ -1,3 +1,4 @@
+from app.common.rate_limit import rate_limit
 from fastapi import APIRouter, Depends
 from app.core.dependency_chain import get_wallet_service
 from app.core.store import require_investor, require_admin, authorize_user_or_admin
@@ -15,6 +16,9 @@ router = APIRouter(prefix="/wallet", tags=["Investor Wallet"])
     "/admin/{user_id}",
     response_model=List[WalletResponse],
     summary="Get wallet by user ID",
+        dependencies=[
+        Depends(rate_limit(limit=5, window=60))
+    ],
     description="""
     Investor endpoint.
 
@@ -33,6 +37,9 @@ def get_by_user_id(
     "/admin",
     response_model=WalletResponse,
     summary="Create investor wallet",
+        dependencies=[
+        Depends(rate_limit(limit=3, window=86400))
+    ],
     description="""
     Investor endpoint.
 

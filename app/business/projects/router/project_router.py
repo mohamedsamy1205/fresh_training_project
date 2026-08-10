@@ -15,6 +15,7 @@ from app.business.projects.schema.project_schema import (
     DistributeProfitsRequest,
     ProjectAnalyticsResponse
 )
+from app.core.redis import get_redis
 from app.business.projects.service.project_service import ProjectService
 
 admin_router = APIRouter(
@@ -27,8 +28,8 @@ investor_router = APIRouter(
     tags=["Investor Projects"]
 )
 
-def get_project_service(db=Depends(get_db)) -> ProjectService:
-    return ProjectService(db)
+def get_project_service(db=Depends(get_db), redis=Depends(get_redis)) -> ProjectService:
+    return ProjectService(db,redis)
 
 # ======================= ADMIN ENDPOINTS =======================
 
@@ -191,8 +192,8 @@ router.include_router(investor_router)
 
 
 @router.get("/projects", response_model=List[ProjectResponse])
-def list_all_projects(db=Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(Project).all()
+async def list_all_projects(service: ProjectService = Depends(get_project_service), current_user: User = Depends(get_current_user)):
+    return await service.list_all_projects()
 
 @router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project_generic(

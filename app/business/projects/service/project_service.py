@@ -2,10 +2,10 @@ from decimal import Decimal
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 from datetime import datetime
+from app.business.projects.schema.project_schema import ProjectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
-
+import json
 from app.business.projects.model.project import Project
 from app.business.projects.model.investment import Investment
 from app.business.projects.model.investment_request import InvestmentRequest
@@ -25,7 +25,6 @@ from app.core.exceptions import (
     ResourceNotFoundException,
     InsufficientBalanceException,
     InvalidOperationException,
-    DuplicateOperationException,
     AppException
 )
 
@@ -40,8 +39,26 @@ class ProjectService:
     - DB-level aggregation for real-time analytics without memory overhead.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, redis):
         self.db = db
+        self.redis = redis
+
+    
+    async def list_all_projects(self):
+
+        cache_key = f"projects"
+        cached = await self.redis.get(cache_key)
+        if cached:
+            cached = json.loads(cached)
+            return cached
+
+        query = self.db.query(Project).all()
+        data = [
+            ProjectResponse.model_validate(project).model_dump(mode="json")
+            for project in query
+        ]
+        await self.redis.setex(cache_key, 600, json.dumps(data))
+        return data
 
     def _validate_amount(self, amount: Decimal) -> Decimal:
         if not isinstance(amount, Decimal):

@@ -35,8 +35,8 @@ def get_wallet_service(repo=Depends(get_wallet_repo)):
 # ====================== TRANSACTION SERVICE ======================
 from app.business.transaction.controller.transaction_controller import TransactionController
 
-def get_transaction_repo(db = Depends(get_db)) -> TransactionRepository:
-    return TransactionRepository(db)
+def get_transaction_repo(db = Depends(get_db),redis=Depends(get_redis)) -> TransactionRepository:
+    return TransactionRepository(db,redis)
 
 def get_transaction_service(repo = Depends(get_transaction_repo)) -> TransactionService:
     return TransactionService(repo)

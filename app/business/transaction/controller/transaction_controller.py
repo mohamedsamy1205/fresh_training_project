@@ -13,7 +13,7 @@ class TransactionController:
         self.service = service
 
 
-    def get_sender_transactions(
+    async def get_sender_transactions(
         self,
         user_id: UUID,
         params: PaginationParams
@@ -21,5 +21,5 @@ class TransactionController:
         """
         Orchestrates fetching paginated transactions for a sender user.
         """
-        return self.service.get_sender_transactions_paginated(user_id, params)
+        return await self.service.get_sender_transactions_paginated(user_id, params)
 
