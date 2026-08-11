@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     PRIVATE_KEY_PATH: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     MAIN_COMPANY_WALLET: UUID
+    REFRESH_TOKEN_EXPIRE_MINUTES: int
 
     class Config:
         env_file = ".env"

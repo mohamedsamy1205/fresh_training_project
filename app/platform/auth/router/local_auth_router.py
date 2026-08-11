@@ -5,6 +5,8 @@ from app.core.dependency_chain import get_auth_service
 from app.core.store import get_user_from_refrsh_token
 from fastapi import Response
 
+def get_jwt_key_manager(request: Request):
+    return request.app.state.jwt_key_manager
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post(
@@ -16,9 +18,9 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     Refreshes the JWT access token using the refresh_token cookie.
     """
 )
-def refresh(service: AuthService = Depends(get_auth_service), current_user: User = Depends(get_user_from_refrsh_token)):
+def refresh(service: AuthService = Depends(get_auth_service), current_user: User = Depends(get_user_from_refrsh_token), key_manager=Depends(get_jwt_key_manager)):
     response = Response(content="done")
-    tokens = service.refresh_token(current_user)
+    tokens = service.refresh_token(current_user, key_manager)
     access_value = tokens["access_token"]
     refresh_value = tokens["refresh_token"]
     response.set_cookie(
@@ -38,5 +40,5 @@ def refresh(service: AuthService = Depends(get_auth_service), current_user: User
     return response
 
 @router.get("/.well-known/jwks.json")
-def jwks(service: AuthService = Depends(get_auth_service)):
-    return service.jwks()
+def jwks(key_manager=Depends(get_jwt_key_manager)):
+    return key_manager.get_jwks()

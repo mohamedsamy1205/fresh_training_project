@@ -8,6 +8,8 @@ from app.platform.auth.router import local_auth_router
 from app.core.store import get_current_user
 from app.platform.users.model.user import User
 
+def get_jwt_key_manager(request: Request):
+    return request.app.state.jwt_key_manager
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 router.include_router(local_auth_router.router)
@@ -49,13 +51,13 @@ async def google_login(request: Request):
     and sets access and refresh tokens in HTTP-only cookies.
     """
 )
-async def google_callback(request: Request, service: AuthService = Depends(get_auth_service)):
+async def google_callback(request: Request, service: AuthService = Depends(get_auth_service), key_manager=Depends(get_jwt_key_manager)):
     token = await oauth.google.authorize_access_token(request)
     response = RedirectResponse(url="/")
     
     user_info = token.get("userinfo")
     
-    tokens = service.login_with_google(user_info)
+    tokens = service.login_with_google(user_info, key_manager)
     access_value = tokens["access_token"]
     refresh_value = tokens["refresh_token"]
     response.set_cookie(

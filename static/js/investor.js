@@ -51,7 +51,7 @@ async function loadInvestorWallet() {
   if (balanceEl) balanceEl.textContent = "$--.--";
 
   try {
-    const res = await fetch("/wallet/wallets/me", {
+    const res = await fetch("/wallet/me", {
       credentials: "include"
     });
 

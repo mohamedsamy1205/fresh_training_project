@@ -9,6 +9,8 @@ from app.core.config import settings
 from app.platform.users.model.user import User
 from app.core.database import get_db
 
+def get_jwt_key_manager(request: Request):
+    return request.app.state.jwt_key_manager
 def get_user_repo(db=Depends(get_db), redis=Depends(get_redis)) -> UserRepository:
     return UserRepository(db,redis)
 
@@ -21,14 +23,15 @@ def get_public_key():
 
 def get_user_from_refrsh_token(
     request: Request,
-    userRepository:UserRepository = Depends(get_user_repo)
+    userRepository:UserRepository = Depends(get_user_repo),
+    key_manager=Depends(get_jwt_key_manager)
 ):
     token = request.cookies.get("refresh_token")
 
     if not token:
         raise UnauthorizedException("Not authenticated")
     try:
-        payload = jwt.decode(token, get_public_key(), algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, key_manager.get_public_key(), algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
 
         if not email:
@@ -47,7 +50,8 @@ def get_user_from_refrsh_token(
     
 def get_current_user(
     request: Request,
-    userRepository:UserRepository = Depends(get_user_repo)
+    userRepository:UserRepository = Depends(get_user_repo),
+    key_manager=Depends(get_jwt_key_manager)
 ):
     token = request.cookies.get("access_token")
 
@@ -55,7 +59,7 @@ def get_current_user(
         raise UnauthorizedException("Not authenticated")
 
     try:
-        payload = jwt.decode(token, get_public_key(), algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, key_manager.get_public_key(), algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
         
         if not email:
@@ -65,7 +69,6 @@ def get_current_user(
 
         if not user:
             raise ResourceNotFoundException("User not found")
-
         return user
 
     except JWTError:

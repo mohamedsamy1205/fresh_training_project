@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from app.core.database import Base, get_engine
 from app.core.config import settings
@@ -12,12 +14,40 @@ from app.business.projects.router import project_router
 from app.core.exception_handlers import register_exception_handlers
 from app.core.models_loader import *
 import os
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.core.redis import redis_client
+from app.core.redis import redis_client as redis
+from contextlib import asynccontextmanager
+from app.core.jwt_key_manager import JWTKeyManager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # Create JWT key manager
+    key_manager = JWTKeyManager(redis)
+
+    # Generate NEW RSA key pair
+    await key_manager.initialize()
+
+    # Make it available throughout the application
+    app.state.jwt_key_manager = key_manager
+
+    yield
+
+    # Cleanup
+    await redis.close()
 
 
-app = FastAPI()
+
+
+app = FastAPI(
+    lifespan=lifespan,
+    title="Task Management API",
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+)
 
 # # redis check
 # @app.on_event("startup")
@@ -53,8 +83,15 @@ app.include_router(mony_movements_router.router)
 app.include_router(project_router.router)
 
 
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
+
+
+app.mount(
+    "/static",
+    StaticFiles(directory=str(STATIC_DIR)),
+    name="static",
+)
 
 @app.get("/", include_in_schema=False)
 def serve_index():
@@ -76,3 +113,47 @@ def serve_investor():
 
 
 
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger():
+    return HTMLResponse(
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Fresh Prioject API</title>
+
+            <link
+                rel="stylesheet"
+                type="text/css"
+                href="/static/css/style.css"
+            >
+
+            <link
+                rel="stylesheet"
+                type="text/css"
+                href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css"
+            >
+        </head>
+
+        <body>
+            <div id="swagger-ui"></div>
+
+            <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
+
+            <script>
+                window.onload = function () {
+                    SwaggerUIBundle({
+                        url: "/openapi.json",
+                        dom_id: "#swagger-ui",
+                        deepLinking: true,
+                        persistAuthorization: true,
+                        displayRequestDuration: true,
+                        filter: true,
+                        tryItOutEnabled: true
+                    });
+                };
+            </script>
+        </body>
+        </html>
+        """
+    )
