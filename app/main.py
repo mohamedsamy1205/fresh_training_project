@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    title="Task Management API",
+    title="Fresh Prioject API",
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
@@ -125,7 +125,7 @@ async def custom_swagger():
             <link
                 rel="stylesheet"
                 type="text/css"
-                href="/static/css/style.css"
+                href="/static/swagger/custom.css"
             >
 
             <link
