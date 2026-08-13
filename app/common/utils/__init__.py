@@ -1,1 +1,1 @@
-"""Utility package initialization."""
+# Init utils package

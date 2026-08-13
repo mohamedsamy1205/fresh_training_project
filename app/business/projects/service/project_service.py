@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 from typing import Dict, Any, List, Optional
 from uuid import UUID
@@ -13,6 +14,7 @@ from app.business.wallet.model.wallet import Wallet
 from app.business.transaction.model.transaction import Transaction
 from app.business.transaction.model.ledger_entry import LedgerEntry
 from app.common.enums import (
+    UserRole,
     ProjectStatus,
     InvestmentRequestStatus,
     TransactionType,
@@ -43,21 +45,44 @@ class ProjectService:
         self.db = db
         self.redis = redis
 
-    
-    async def list_all_projects(self):
+    async def list_all_projects(self, current_user: Optional[Any] = None):
 
         cache_key = f"projects"
         cached = await self.redis.get(cache_key)
         if cached:
-            cached = json.loads(cached)
-            return cached
+            data = json.loads(cached)
+        else:
+            query = self.db.query(Project).all()
+            data = [
+                ProjectResponse.model_validate(project).model_dump(mode="json")
+                for project in query
+            ]
+            await self.redis.setex(cache_key, 300, json.dumps(data))
 
-        query = self.db.query(Project).all()
-        data = [
-            ProjectResponse.model_validate(project).model_dump(mode="json")
-            for project in query
-        ]
-        await self.redis.setex(cache_key, 600, json.dumps(data))
+        if current_user and getattr(current_user, "uuid", None):
+            user_role = getattr(current_user, "role", None)
+            role_str = user_role.value if hasattr(user_role, 'value') else str(user_role or "")
+            if role_str.lower() == UserRole.INVESTOR.value:
+                user_requests = (
+                    self.db.query(InvestmentRequest)
+                    .filter(InvestmentRequest.user_id == current_user.uuid)
+                    .order_by(InvestmentRequest.created_at.desc())
+                    .all()
+                )
+                req_map = {}
+                for req in user_requests:
+                    p_id = str(req.project_id)
+                    if p_id not in req_map:
+                        status_val = req.status.value if hasattr(req.status, 'value') else str(req.status)
+                        req_map[p_id] = status_val
+
+                updated_data = []
+                for p in data:
+                    p_copy = dict(p)
+                    p_copy["user_request_status"] = req_map.get(str(p_copy.get("uuid")))
+                    updated_data.append(p_copy)
+                return updated_data
+
         return data
 
     def _validate_amount(self, amount: Decimal) -> Decimal:
@@ -99,7 +124,8 @@ class ProjectService:
         wallet_map = {w.uuid: w for w in locked_wallets}
         return wallet_map[wallet_id_1], wallet_map[wallet_id_2]
 
-    def create_project(self, name: str, start_date: datetime, end_date: datetime) -> Project:
+    async def create_project(self, name: str, start_date: datetime, end_date: datetime) -> Project:
+        cache_key = f"projects"
         if end_date <= start_date:
             raise InvalidOperationException("end_date must be strictly after start_date.")
         project = Project(
@@ -111,6 +137,7 @@ class ProjectService:
         )
         self.db.add(project)
         self.db.commit()
+        await self.redis.delete(cache_key)
         self.db.refresh(project)
         return project
 
@@ -148,6 +175,20 @@ class ProjectService:
         if not user_wallet:
             raise ResourceNotFoundException(f"Wallet '{wallet_id}' not found for user '{user_id}'.")
 
+        existing_request = (
+            self.db.query(InvestmentRequest)
+            .filter(
+                InvestmentRequest.user_id == user_id,
+                InvestmentRequest.project_id == project.uuid
+            )
+            .first()
+        )
+        if existing_request:
+            req_status = existing_request.status.value if hasattr(existing_request.status, 'value') else str(existing_request.status)
+            raise InvalidOperationException(
+                f"You have already submitted an investment request for this project (Status: {req_status.upper()})."
+            )
+
         investment_request = InvestmentRequest(
             user_id=user_id,
             project_id=project.uuid,
@@ -160,7 +201,58 @@ class ProjectService:
         self.db.refresh(investment_request)
         return investment_request
 
-    def approve_investment_request(
+    def list_investment_requests(self, project_id: UUID) -> List[InvestmentRequest]:
+        project = (
+            self.db.query(Project)
+            .filter(Project.uuid == project_id)
+            .first()
+        )
+        if not project:
+            raise ResourceNotFoundException(f"Project '{project_id}' not found.")
+
+        return (
+            self.db.query(InvestmentRequest)
+            .filter(InvestmentRequest.project_id == project_id)
+            .all()
+        )
+
+    async def delete_project(self, project_id: UUID) -> Dict[str, Any]:
+        project = (
+            self.db.query(Project)
+            .filter(Project.uuid == project_id)
+            .first()
+        )
+        if not project:
+            raise ResourceNotFoundException(f"Project '{project_id}' not found.")
+
+        try:
+            with self.db.begin_nested():
+                self.db.query(InvestmentRequest).filter(InvestmentRequest.project_id == project_id).delete(synchronize_session=False)
+                self.db.query(Investment).filter(Investment.project_id == project_id).delete(synchronize_session=False)
+                self.db.delete(project)
+                self.db.flush()
+
+            self.db.commit()
+
+            if self.redis:
+                try:
+                    await self.redis.delete("projects")
+                except Exception:
+                    pass
+
+            return {
+                "success": True,
+                "message": f"Project '{project_id}' and all associated relations deleted successfully."
+            }
+
+        except AppException:
+            self.db.rollback()
+            raise
+        except Exception as e:
+            self.db.rollback()
+            raise InvalidOperationException(f"Failed to delete project: {str(e)}")
+
+    async def approve_investment_request(
         self,
         request_id: UUID,
         idempotency_key: str
@@ -255,7 +347,8 @@ class ProjectService:
                 self.db.flush()
 
             self.db.commit()
-
+            cache_key = f"projects"
+            await self.redis.delete(cache_key)
             return {
                 "success": True,
                 "is_duplicate": False,
@@ -291,7 +384,7 @@ class ProjectService:
         self.db.refresh(inv_request)
         return inv_request
 
-    def close_project(self, project_id: UUID, final_amount: Decimal) -> Project:
+    async def close_project(self, project_id: UUID, final_amount: Decimal) -> Project:
         if not isinstance(final_amount, Decimal):
             final_amount = Decimal(str(final_amount))
 
@@ -322,11 +415,56 @@ class ProjectService:
                 f"Project cannot be closed: requires at least 2 distinct investors, but currently has {distinct_investors_count}."
             )
 
-        project.final_amount = final_amount
-        project.status = ProjectStatus.CLOSED.value
-        self.db.commit()
-        self.db.refresh(project)
-        return project
+        treasury_wallet = self._get_treasury_wallet()
+
+        try:
+            with self.db.begin_nested():
+                treasury_wallet.balance += final_amount
+
+                tx = Transaction(
+                    idempotency_key=f"close_project_{project.uuid}_{uuid.uuid4()}",
+                    user_id=None,
+                    wallet_id=treasury_wallet.uuid,
+                    amount=final_amount,
+                    currency=treasury_wallet.currency or "USD",
+                    type=TransactionType.DEPOSIT.value,
+                    status=TransactionStatus.SUCCESS.value,
+                    description=f"Project closure valuation deposit for project {project.name}"
+                )
+                self.db.add(tx)
+                self.db.flush()
+
+                ledger_entry = LedgerEntry(
+                    transaction_id=tx.uuid,
+                    wallet_id=treasury_wallet.uuid,
+                    entry_type=LedgerEntryType.CREDIT.value,
+                    amount=final_amount,
+                    balance_after=treasury_wallet.balance
+                )
+                self.db.add(ledger_entry)
+
+                project.final_amount = final_amount
+                project.status = ProjectStatus.CLOSED.value
+                self.db.flush()
+
+            self.db.commit()
+
+            cache_key = f"projects"
+            if self.redis:
+                try:
+                    await self.redis.delete(cache_key)
+                except Exception:
+                    pass
+
+            self.db.refresh(project)
+            return project
+
+        except AppException:
+            self.db.rollback()
+            raise
+        except Exception as e:
+            self.db.rollback()
+            raise InvalidOperationException(f"Failed to close project: {str(e)}")
 
     def get_project_analytics(self, project_id: UUID) -> Dict[str, Any]:
         project = (
@@ -367,7 +505,7 @@ class ProjectService:
             "average_investment_amount": avg_investment
         }
 
-    def distribute_profits(
+    async def distribute_profits(
         self,
         project_id: UUID,
         idempotency_key: str
@@ -516,7 +654,8 @@ class ProjectService:
                 self.db.flush()
 
             self.db.commit()
-
+            cache_key = f"projects"
+            await self.redis.delete(cache_key)
             return {
                 "success": True,
                 "is_duplicate": False,

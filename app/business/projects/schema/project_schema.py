@@ -53,6 +53,7 @@ class ProjectResponse(BaseModel):
     initial_amount: MoneyAmount
     final_amount: Optional[MoneyAmount] = None
     status: ProjectStatus
+    user_request_status: Optional[InvestmentRequestStatus] = None
     created_at: datetime
     updated_at: datetime
 

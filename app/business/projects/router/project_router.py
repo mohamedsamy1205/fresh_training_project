@@ -74,6 +74,41 @@ def get_project_analytics(
 ):
     return service.get_project_analytics(project_id=project_id)
 
+@admin_router.get(
+    "/{project_id}/investment-requests",
+    response_model=List[InvestmentRequestResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List investment requests for a project",
+    description="""
+    Admin only endpoint.
+
+    Retrieves all investment requests submitted for a specific project ID.
+    """
+)
+def list_investment_requests(
+    project_id: UUID,
+    service: ProjectService = Depends(get_project_service),
+    current_user: User = Depends(require_admin)
+):
+    return service.list_investment_requests(project_id=project_id)
+
+@admin_router.delete(
+    "/{project_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete investment project",
+    description="""
+    Admin only endpoint.
+
+    Transactionally deletes an investment project and all associated investment requests and investment records.
+    """
+)
+async def delete_project(
+    project_id: UUID,
+    service: ProjectService = Depends(get_project_service),
+    current_user: User = Depends(require_admin)
+):
+    return await service.delete_project(project_id=project_id)
+
 @admin_router.post(
     "/requests/{request_id}/approve",
     status_code=status.HTTP_200_OK,
@@ -84,13 +119,13 @@ def get_project_analytics(
     Allows administrators to approve an investor's pending investment request using an idempotency key.
     """
 )
-def approve_investment_request(
+async def approve_investment_request(
     request_id: UUID,
     idempotency_key: str,
     service: ProjectService = Depends(get_project_service),
     current_user: User = Depends(require_admin)
 ):
-    return service.approve_investment_request(
+    return await service.approve_investment_request(
         request_id=request_id,
         idempotency_key=idempotency_key
     )
@@ -127,13 +162,13 @@ def reject_investment_request(
     Requires a minimum of 2 active investors.
     """
 )
-def close_project(
+async def close_project(
     project_id: UUID,
     request: ProjectCloseRequest,
     service: ProjectService = Depends(get_project_service),
     current_user: User = Depends(require_admin)
 ):
-    return service.close_project(
+    return await service.close_project(
         project_id=project_id,
         final_amount=request.final_amount
     )
@@ -148,13 +183,13 @@ def close_project(
     Distributes financial profits or losses to project investors proportionally using an idempotency key.
     """
 )
-def distribute_profits(
+async def distribute_profits(
     project_id: UUID,
     request: DistributeProfitsRequest,
     service: ProjectService = Depends(get_project_service),
     current_user: User = Depends(require_admin)
 ):
-    return service.distribute_profits(
+    return await service.distribute_profits(
         project_id=project_id,
         idempotency_key=request.idempotency_key
     )
@@ -193,10 +228,10 @@ router.include_router(investor_router)
 
 @router.get("/projects", response_model=List[ProjectResponse])
 async def list_all_projects(service: ProjectService = Depends(get_project_service), current_user: User = Depends(get_current_user)):
-    return await service.list_all_projects()
+    return await service.list_all_projects(current_user=current_user)
 
 @router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project_generic(
+async def create_project_generic(
     payload: dict,
     service: ProjectService = Depends(get_project_service),
     current_user: User = Depends(require_admin)
@@ -204,5 +239,5 @@ def create_project_generic(
     name = payload.get("name")
     start_date = payload.get("start_date") or datetime.utcnow()
     end_date = payload.get("end_date") or (datetime.utcnow() + timedelta(days=365))
-    return service.create_project(name=name, start_date=start_date, end_date=end_date)
+    return await service.create_project(name=name, start_date=start_date, end_date=end_date)
 
