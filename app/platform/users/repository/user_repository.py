@@ -11,8 +11,8 @@ class UserRepository:
     def get_by_email(self, email: str) -> Optional[User]:
         return self.db.query(User).filter(User.email == email).first()
 
-    def get_by_id(self, user_id: int) -> Optional[User]:
-        return self.db.query(User).filter(User.id == user_id).first()
+    def get_by_id(self, user_id: UUID) -> Optional[User]:
+        return self.db.query(User).filter(User.uuid == user_id).first()
 
     def get_by_uuid(self, user_uuid: UUID | str) -> Optional[User]:
         if isinstance(user_uuid, str):

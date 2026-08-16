@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from app.core.dependency_chain import get_user_service
 from app.platform.users.service.user_service import UserService
@@ -38,7 +40,7 @@ def create_user(
     """
 )
 def get_user(
-    user_id: int,
+    user_id: UUID,
     current_user: User = Depends(require_admin),
     service: UserService = Depends(get_user_service)
 ):
@@ -82,7 +84,7 @@ def get_users(
     """
 )
 def update_user(
-    user_id: int,
+    user_id: UUID,
     updates: UserUpdate,
     current_user: User = Depends(require_admin),
     service: UserService = Depends(get_user_service)
@@ -100,7 +102,7 @@ def update_user(
     """
 )
 def delete_user(
-    user_id: int,
+    user_id: UUID,
     current_user: User = Depends(require_admin),
     service: UserService = Depends(get_user_service)
 ):

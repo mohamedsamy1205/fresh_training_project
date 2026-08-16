@@ -44,7 +44,7 @@ class UserService:
             "provider": "google"
         })
 
-    def get_user(self, user_id: int):
+    def get_user(self, user_id: uuid.UUID):
         user = self.repo.get_by_id(user_id)
         if not user:
             raise ResourceNotFoundException("User not found")
@@ -56,7 +56,7 @@ class UserService:
     def get_users(self, limit, skip, sort_by, order):
         return self.repo.get_users(limit, skip, sort_by, order)
 
-    def update_user(self, user_id: int, updates: UserUpdate):
+    def update_user(self, user_id: uuid.UUID, updates: UserUpdate):
         user = self.repo.get_by_id(user_id)
         if not user:
             raise ResourceNotFoundException("User not found")
@@ -68,7 +68,7 @@ class UserService:
 
         return self.repo.update(user, updates_data)
 
-    def delete_user(self, user_id: int):
+    def delete_user(self, user_id: uuid.UUID):
         user = self.repo.get_by_id(user_id)
         if not user:
             raise ResourceNotFoundException("User not found")
