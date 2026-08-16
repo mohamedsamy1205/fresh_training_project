@@ -165,4 +165,116 @@ async def test_close_project_records_transaction_and_ledger():
     assert db.add.called
 
 
+@pytest.mark.asyncio
+async def test_approve_investment_request_success():
+    from decimal import Decimal
+    from app.common.enums import ProjectStatus, InvestmentRequestStatus
+    from app.business.transaction.model.transaction import Transaction
+
+    db = MagicMock()
+    redis = MagicMock()
+    async def async_redis_delete(key):
+        pass
+    redis.delete = async_redis_delete
+
+    mock_money_service = MagicMock()
+    mock_tx = Transaction(uuid=uuid.uuid4(), amount=Decimal("250.00"))
+    mock_money_service.process_investment.return_value = mock_tx
+
+    service = ProjectService(db, redis, money_movement_service=mock_money_service)
+
+    req_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    wallet_id = uuid.uuid4()
+
+    mock_req = InvestmentRequest(
+        uuid=req_id,
+        user_id=user_id,
+        project_id=project_id,
+        wallet_id=wallet_id,
+        amount=Decimal("250.00"),
+        status=InvestmentRequestStatus.PENDING.value
+    )
+    mock_project = Project(
+        uuid=project_id,
+        name="Tech Venture",
+        status=ProjectStatus.ACTIVE.value,
+        initial_amount=Decimal("100.00")
+    )
+
+    db.query.return_value.filter.return_value.first.side_effect = [
+        mock_req,
+        mock_project
+    ]
+
+    res = await service.approve_investment_request(req_id, "idemp_key_123")
+
+    assert res["success"] is True
+    assert res["is_duplicate"] is False
+    assert mock_req.status == InvestmentRequestStatus.APPROVED.value
+    assert mock_project.initial_amount == Decimal("350.00")
+    mock_money_service.process_investment.assert_called_once_with(
+        user_id=user_id,
+        wallet_id=wallet_id,
+        amount=Decimal("250.00"),
+        idempotency_key="idemp_key_123",
+        project_name="Tech Venture"
+    )
+
+
+@pytest.mark.asyncio
+async def test_distribute_profits_success():
+    from decimal import Decimal
+    from app.common.enums import ProjectStatus
+    from app.business.projects.model.investment import Investment
+    from app.business.wallet.model.wallet import Wallet
+
+    db = MagicMock()
+    redis = MagicMock()
+    async def async_redis_delete(key):
+        pass
+    redis.delete = async_redis_delete
+
+    mock_money_service = MagicMock()
+    mock_treasury = Wallet(uuid=uuid.uuid4(), balance=Decimal("10000.00"))
+    mock_money_service.get_treasury_wallet.return_value = mock_treasury
+
+    service = ProjectService(db, redis, money_movement_service=mock_money_service)
+
+    project_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    wallet_id = uuid.uuid4()
+
+    mock_project = Project(
+        uuid=project_id,
+        name="Real Estate Alpha",
+        status=ProjectStatus.CLOSED.value,
+        initial_amount=Decimal("1000.00"),
+        final_amount=Decimal("1500.00")
+    )
+
+    mock_investment = Investment(
+        uuid=uuid.uuid4(),
+        user_id=user_id,
+        project_id=project_id,
+        wallet_id=wallet_id,
+        amount=Decimal("1000.00")
+    )
+
+    db.query.return_value.filter.return_value.first.return_value = mock_project
+    db.query.return_value.filter.return_value.all.return_value = [mock_investment]
+
+    res = await service.distribute_profits(project_id, "dist_idemp_key")
+
+    assert res["success"] is True
+    assert res["is_duplicate"] is False
+    assert mock_project.status == ProjectStatus.DISTRIBUTED.value
+    assert res["total_profit"] == Decimal("500.00")
+    assert res["total_company_fee_collected"] == Decimal("100.00")
+    assert res["total_returned_to_investors"] == Decimal("1400.00")
+    mock_money_service.process_profit_payout.assert_called_once()
+
+
+
 

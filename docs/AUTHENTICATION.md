@@ -1,66 +1,84 @@
 # Authentication & Authorization Documentation
 
-This document describes the authentication mechanisms, token management, available roles, and security dependencies enforced across the FastAPI backend.
+This document describes the authentication mechanisms, session management, token claims, available roles, and security dependencies enforced across the FastAPI backend.
 
 ---
 
-## 1. Overview & Login Flow
+## 1. Overview & Session-Based Authentication Flow
 
-The application uses **Google OAuth2** for primary user authentication and **JWT (JSON Web Tokens)** for session management.
+The application uses **Google OAuth2** for primary user authentication, **PostgreSQL UserSession** for device/session tracking, and **RS256 signed JWTs** for state verification.
 
-### Google OAuth2 Login Flow
-1. **Initiate Login**: Client issues `GET /auth/google/login`.
-2. **Google Redirect**: Server redirects client to Google OAuth2 authorization page.
-3. **User Authentication**: User grants access on Google.
-4. **OAuth Callback**: Google redirects user back to `GET /auth/google/callback`.
-5. **Token Generation & Cookie Setting**:
-   - The server extracts user info (email, name).
-   - If the user does not exist in the database, a new user profile is created with default role `investor` and provider `google`.
-   - The server signs an `access_token` (expires based on `ACCESS_TOKEN_EXPIRE_MINUTES`) and a `refresh_token` (expires in 7 days).
-   - The tokens are set in the client browser as `HTTPOnly` cookies.
+```text
+Login / Google Callback
+  ↓
+Create User Session (UserSession in PostgreSQL)
+  ↓
+Create Access Token + Refresh Token (both containing sid)
+  ↓
+Access Token authenticates API requests (payload decoded, user loaded only when needed)
+  ↓
+Refresh Token validates active session in database and issues new tokens
+  ↓
+User can view active sessions (GET /auth/sessions)
+  ↓
+User can revoke single session (DELETE /auth/sessions/{session_id})
+  ↓
+User can revoke all sessions (DELETE /auth/sessions)
+```
 
 ---
 
-## 2. JWT & Cookie Handling
+## 2. JWT Tokens & Claims Structure
 
-Tokens are stored in client cookies rather than Authorization headers:
+### Access Token Claims
+- `sub`: User email
+- `user_id`: User UUID
+- `role`: Role string (`investor`, `admin`, `admin_dev`)
+- `type`: `"access_token"`
+- `permissions`: List of granted permission strings
+- `sid`: Unique Session UUID
+- `jti`: Unique token identifier UUID
+- `iat`: Token issuance timestamp
+- `exp`: Expiration timestamp (`ACCESS_TOKEN_EXPIRE_MINUTES`)
+
+### Refresh Token Claims
+- `sub`: User email
+- `user_id`: User UUID
+- `sid`: Unique Session UUID
+- `type`: `"refresh_token"`
+- `jti`: Unique token identifier UUID
+- `iat`: Token issuance timestamp
+- `exp`: Expiration timestamp (`REFRESH_TOKEN_EXPIRE_MINUTES`)
+
+*(Note: Refresh tokens do not contain roles or permissions).*
+
+---
+
+## 3. Cookie Handling
 
 | Cookie Name | Purpose | Expiration | Attributes |
 | :--- | :--- | :--- | :--- |
-| `access_token` | Primary JWT token for authenticating requests | `ACCESS_TOKEN_EXPIRE_MINUTES` (e.g., 30 mins) | `HttpOnly=True`, `SameSite=lax`, `Secure=False` |
-| `refresh_token` | JWT token used to issue new `access_token` pairs | 7 Days | `HttpOnly=True`, `SameSite=lax`, `Secure=False` |
-
----
-
-## 3. User Roles
-
-Defined in `app.common.enums.UserRole`:
-
-- `admin`: Full system access, money movements, project creation/closing, profit distribution, user administration.
-- `admin_dev`: Developer/administrator role.
-- `investor`: Investor user role for managing individual wallets, creating transactions, and submitting project investment requests.
+| `access_token` | Primary JWT token for authenticating requests | `ACCESS_TOKEN_EXPIRE_MINUTES` (30 mins) | `HttpOnly=True`, `SameSite=lax`, `Secure=False` |
+| `refresh_token` | JWT token used to validate session & refresh tokens | 7 Days | `HttpOnly=True`, `SameSite=lax`, `Secure=False` |
 
 ---
 
 ## 4. Security Dependencies
 
-The security layer (`app/core/security.py`) provides three FastAPI dependencies:
+### 1. `get_access_payload`
+- Extracts and validates `access_token` JWT payload without database lookup.
 
-### 1. `get_current_user`
-- **Behavior**: Extracts `access_token` cookie from request. Decodes JWT payload, validates `sub` claim (user email), and queries `User` from PostgreSQL database.
-- **Error Behavior**:
-  - `401 Unauthorized`: Token missing, invalid, or expired.
-  - `401 Unauthorized` / `404 Not Found`: User payload invalid or user not found.
+### 2. `get_refresh_payload`
+- Extracts and validates `refresh_token` JWT payload without database lookup.
 
-### 2. `require_admin`
-- **Behavior**: Invokes `get_current_user`. Asserts `current_user.role == UserRole.ADMIN`.
-- **Error Behavior**:
-  - `403 Forbidden`: User role is not `admin`.
+### 3. `get_current_user`
+- Depends on `get_access_payload` and resolves the `User` from PostgreSQL by `user_id` (UUID).
 
-### 3. `require_investor`
-- **Behavior**: Invokes `get_current_user`. Asserts `current_user.role == UserRole.INVESTOR`.
-- **Error Behavior**:
-  - `403 Forbidden`: User role is not `investor`.
+### 4. `require_permission(permission: str)`
+- Validates permissions directly from the decoded Access Token payload without loading the database User.
+
+### 5. `require_admin` / `require_investor`
+- Asserts appropriate user role.
 
 ---
 
@@ -69,37 +87,34 @@ The security layer (`app/core/security.py`) provides three FastAPI dependencies:
 ### GET `/auth/google/login`
 - **Role / Access**: Public
 - **Summary**: Initiate Google OAuth2 login
-- **Description**: Redirects the user browser to Google's OAuth2 authorization page.
-- **Headers**: None
-- **Query Parameters**: None
-- **Response**: `302 Found` redirect to Google OAuth2 URL.
-
----
 
 ### GET `/auth/google/callback`
 - **Role / Access**: Public
 - **Summary**: Google OAuth2 authentication callback
-- **Description**: Handles callback code from Google, creates user if missing, generates JWT tokens, and sets `access_token` & `refresh_token` HTTP-only cookies.
-- **Headers**: None
-- **Query Parameters**: Provided automatically by Google (`code`, `state`).
-- **Response**: `302 Found` redirect to `http://localhost:8000/docs` with `Set-Cookie` headers.
-
----
+- **Behavior**: Authenticates user, creates a new `UserSession` tracking client device info, and issues `access_token` and `refresh_token` cookies with matching `sid`.
 
 ### POST `/auth/refresh`
 - **Role / Access**: Public (requires valid `refresh_token` cookie)
-- **Summary**: Refresh access token
-- **Description**: Reads `refresh_token` from request cookies, validates token signature, and issues a new access token pair.
-- **Headers**: `Content-Type: application/json`
-- **Cookies**: `refresh_token` (Required)
-- **Request Body**: None
-- **Response Schema (`200 OK`)**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1Ni...",
-  "refresh_token": "eyJhbGciOiJIUzI1Ni...",
-  "token_type": "bearer"
-}
-```
-- **Error Responses**:
-  - `401 Unauthorized`: `{"detail": "No refresh token"}` or `{"success": false, "error": {"code": "UNAUTHORIZED", "message": "Invalid or expired token"}}`
+- **Summary**: Refresh access and refresh tokens
+- **Behavior**: Validates signature and claims, verifies that the session `sid` is not revoked and not expired, updates `last_seen`, and issues new token cookies retaining the session ID.
+
+### GET `/auth/sessions`
+- **Role / Access**: Authenticated
+- **Summary**: List active user sessions
+- **Response**: List of active sessions with device name, IP address, user agent, timestamps, and `is_current` flag.
+
+### DELETE `/auth/sessions/{session_id}`
+- **Role / Access**: Authenticated
+- **Summary**: Revoke a specific session
+- **Behavior**: Revokes the session if owned by the user. If the revoked session is the current active session, clears cookies.
+
+### DELETE `/auth/sessions`
+- **Role / Access**: Authenticated
+- **Summary**: Revoke all user sessions
+- **Behavior**: Revokes all active sessions for the authenticated user and clears cookies.
+
+### POST `/auth/logout`
+- **Role / Access**: Public / Authenticated
+- **Summary**: Logout user
+- **Behavior**: Revokes the active session and clears auth cookies.
+

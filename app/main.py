@@ -45,8 +45,8 @@ app = FastAPI(
     lifespan=lifespan,
     title="Fresh Prioject API",
     version="1.0.0",
-    docs_url=None,
-    redoc_url=None,
+    # docs_url=None,
+    # redoc_url=None,
 )
 
 # # redis check
@@ -113,47 +113,47 @@ def serve_investor():
 
 
 
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger():
-    return HTMLResponse(
-        """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Fresh Prioject API</title>
+# @app.get("/docs", include_in_schema=False)
+# async def custom_swagger():
+#     return HTMLResponse(
+#         """
+#         <!DOCTYPE html>
+#         <html>
+#         <head>
+#             <title>Fresh Prioject API</title>
 
-            <link
-                rel="stylesheet"
-                type="text/css"
-                href="/static/swagger/custom.css"
-            >
+#             <link
+#                 rel="stylesheet"
+#                 type="text/css"
+#                 href="/static/swagger/custom.css"
+#             >
 
-            <link
-                rel="stylesheet"
-                type="text/css"
-                href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css"
-            >
-        </head>
+#             <link
+#                 rel="stylesheet"
+#                 type="text/css"
+#                 href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css"
+#             >
+#         </head>
 
-        <body>
-            <div id="swagger-ui"></div>
+#         <body>
+#             <div id="swagger-ui"></div>
 
-            <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
+#             <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
 
-            <script>
-                window.onload = function () {
-                    SwaggerUIBundle({
-                        url: "/openapi.json",
-                        dom_id: "#swagger-ui",
-                        deepLinking: true,
-                        persistAuthorization: true,
-                        displayRequestDuration: true,
-                        filter: true,
-                        tryItOutEnabled: true
-                    });
-                };
-            </script>
-        </body>
-        </html>
-        """
-    )
+#             <script>
+#                 window.onload = function () {
+#                     SwaggerUIBundle({
+#                         url: "/openapi.json",
+#                         dom_id: "#swagger-ui",
+#                         deepLinking: true,
+#                         persistAuthorization: true,
+#                         displayRequestDuration: true,
+#                         filter: true,
+#                         tryItOutEnabled: true
+#                     });
+#                 };
+#             </script>
+#         </body>
+#         </html>
+#         """
+#     )

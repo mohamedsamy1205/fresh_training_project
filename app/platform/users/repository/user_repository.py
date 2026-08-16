@@ -1,17 +1,26 @@
+from uuid import UUID
+from typing import Optional
 from app.platform.users.model.user import User
 
 
 class UserRepository:
-    def __init__(self, db, redis):
+    def __init__(self, db, redis=None):
         self.db = db
+        self.redis = redis
 
-    def get_by_email(self, email: str):
-
-        
+    def get_by_email(self, email: str) -> Optional[User]:
         return self.db.query(User).filter(User.email == email).first()
 
-    def get_by_id(self, user_id: int):
+    def get_by_id(self, user_id: int) -> Optional[User]:
         return self.db.query(User).filter(User.id == user_id).first()
+
+    def get_by_uuid(self, user_uuid: UUID | str) -> Optional[User]:
+        if isinstance(user_uuid, str):
+            try:
+                user_uuid = UUID(user_uuid)
+            except (ValueError, TypeError):
+                return None
+        return self.db.query(User).filter(User.uuid == user_uuid).first()
 
     def get_users(self, limit, skip, sort_by, order):
         query = self.db.query(User)

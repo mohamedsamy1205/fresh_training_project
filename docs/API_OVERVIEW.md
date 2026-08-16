@@ -31,7 +31,12 @@ Endpoints are strictly organized by role-based route prefixes:
 | :--- | :--- | :--- | :--- | :--- |
 | **GET** | `/auth/google/login` | Public | Initiate Google OAuth2 login | Auth |
 | **GET** | `/auth/google/callback` | Public | Google OAuth2 authentication callback | Auth |
-| **POST** | `/auth/refresh` | Public | Refresh access token | Auth |
+| **POST** | `/auth/refresh` | Public | Refresh access token and validate session | Auth |
+| **GET** | `/auth/me` | Authenticated | Get current logged in user details | Auth |
+| **GET** | `/auth/sessions` | Authenticated | List active user sessions | Auth |
+| **DELETE** | `/auth/sessions/{session_id}` | Authenticated | Revoke a specific user session | Auth |
+| **DELETE** | `/auth/sessions` | Authenticated | Revoke all user sessions | Auth |
+| **POST** | `/auth/logout` | Public / Auth | Logout user & revoke session | Auth |
 | **POST** | `/admin/users` | Admin | Create user | Admin Users |
 | **GET** | `/admin/users/{user_id}` | Admin | Get user details | Admin Users |
 | **GET** | `/admin/users` | Admin | List all users | Admin Users |

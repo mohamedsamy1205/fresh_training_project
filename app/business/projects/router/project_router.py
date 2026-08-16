@@ -45,12 +45,12 @@ def get_project_service(db=Depends(get_db), redis=Depends(get_redis)) -> Project
     with start date and end date.
     """
 )
-def create_project(
+async def create_project(
     request: ProjectCreate,
     service: ProjectService = Depends(get_project_service),
     current_user: User = Depends(require_admin)
 ):
-    return service.create_project(
+    return await service.create_project(
         name=request.name,
         start_date=request.start_date,
         end_date=request.end_date
