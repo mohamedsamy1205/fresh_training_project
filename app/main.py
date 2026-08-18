@@ -20,11 +20,11 @@ from fastapi.responses import FileResponse
 from app.core.redis import redis_client as redis
 from contextlib import asynccontextmanager
 from app.core.jwt_key_manager import JWTKeyManager
-from app.core.telemetry import setup_logging
+from app.core.telemetry import setup_telemetry
 import logging
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 logger = logging.getLogger(__name__)
-setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,6 +65,7 @@ app = FastAPI(
 #=================================================================================================================================
 
 # Register global exception handlers
+setup_telemetry(app) 
 register_exception_handlers(app)
 
 app.add_middleware(
@@ -78,6 +79,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+FastAPIInstrumentor.instrument_app(
+    app,
+    exclude_spans=["send", "receive"]
 )
 
 app.include_router(user_router.router)

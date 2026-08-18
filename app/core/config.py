@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     MAIN_COMPANY_WALLET: UUID
     REFRESH_TOKEN_EXPIRE_MINUTES: int
+    OTEL_EXPORTER_OTLP_ENDPOINT: str
+    OTEL_SERVICE_NAME: str
 
     class Config:
         env_file = ".env"
