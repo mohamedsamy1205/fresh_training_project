@@ -1,4 +1,5 @@
 services:
+
   db:
     image: postgres:15
     container_name: postgres_db
@@ -25,14 +26,32 @@ services:
     restart: always
     ports:
       - "8000:8000"
+
     depends_on:
       - db
       - redis
+
     environment:
       DATABASE_URL: postgresql://user:password@db:5432/fastapi_db
+
+      OTEL_SERVICE_NAME: fresh-training-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-ingester-1:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+
+    networks:
+      - default
+      - signoz-network
+
     volumes:
       - .:/app
       - ./keys:/app/keys
 
 volumes:
   postgres_data:
+    external: true
+    name: task_management_python_project_postgres_data
+
+
+networks:
+  signoz-network:
+    external: true

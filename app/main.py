@@ -20,6 +20,11 @@ from fastapi.responses import FileResponse
 from app.core.redis import redis_client as redis
 from contextlib import asynccontextmanager
 from app.core.jwt_key_manager import JWTKeyManager
+from app.core.telemetry import setup_logging
+import logging
+
+logger = logging.getLogger(__name__)
+setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
