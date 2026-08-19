@@ -1,67 +1,81 @@
-# Error Handling Specification
+# Error Handling & Exceptions Specification
 
-This document details the standardized exception hierarchy, error handlers, HTTP status codes, and error response formats implemented across the application (`app/core/exceptions.py` and `app/core/exception_handlers.py`).
+This document details the standardized exception hierarchy, error handling middleware, OpenTelemetry trace recording, HTTP status codes, and JSON response formats implemented across the application (`app/core/exceptions.py` and `app/core/exception_handlers.py`).
 
 ---
 
-## 1. Standard Error Response Structure
+## 1. Standard Error Response Envelope
 
-All application errors return a consistent JSON response body:
+All application errors return a structured JSON response body:
 
 ```json
 {
   "success": false,
   "error": {
     "code": "ERROR_CODE_STRING",
-    "message": "Human-readable description of the error",
+    "message": "Human-readable explanation of the error",
     "details": null
   }
 }
 ```
 
-- **`success`** (`boolean`): Always `false` on error.
-- **`error.code`** (`string`): Machine-readable uppercase error identifier.
-- **`error.message`** (`string`): Concise human-readable explanation.
-- **`error.details`** (`any | null`): Additional contextual payload (such as validation error lists or null).
+- **`success`** (`boolean`): Always `false` on errors.
+- **`error.code`** (`string`): Machine-readable uppercase identifier for programmatic handling.
+- **`error.message`** (`string`): Clear, human-readable description of what caused the error.
+- **`error.details`** (`any | null`): Additional contextual metadata (such as schema validation errors, rate limit window info, or `null`).
 
 ---
 
 ## 2. Application Exception Hierarchy
 
-Defined in `app.core.exceptions.AppException`:
+All custom application exceptions inherit from `app.core.exceptions.AppException`:
 
-```
+```text
 AppException (Base Exception)
-├── ResourceNotFoundException (404 Not Found)
-├── InsufficientBalanceException (400 Bad Request)
-├── InvalidOperationException (400 Bad Request)
-├── UnauthorizedException (401 Unauthorized)
-├── ForbiddenException (403 Forbidden)
-├── DuplicateOperationException (409 Conflict)
-└── DatabaseException (500 Internal Server Error)
+├── ResourceNotFoundException       (404 Not Found)
+├── InsufficientBalanceException     (400 Bad Request)
+├── InvalidOperationException        (400 Bad Request)
+├── UnauthorizedException            (401 Unauthorized)
+├── ForbiddenException               (403 Forbidden)
+├── DuplicateOperationException      (409 Conflict)
+├── DatabaseException                (500 Internal Server Error)
+└── RateLimitExceededException       (429 Too Many Requests)
 ```
 
-| Exception Class | Error Code | HTTP Status Code | Default Message |
-| :--- | :--- | :--- | :--- |
-| `ResourceNotFoundException` | `RESOURCE_NOT_FOUND` | `404 NOT FOUND` | Resource not found |
-| `InsufficientBalanceException` | `WALLET_INSUFFICIENT_BALANCE` | `400 BAD REQUEST` | Insufficient wallet balance |
-| `InvalidOperationException` | `INVALID_OPERATION` | `400 BAD REQUEST` | Invalid operation |
-| `UnauthorizedException` | `UNAUTHORIZED` | `401 UNAUTHORIZED` | Authentication credentials were missing or invalid |
-| `ForbiddenException` | `FORBIDDEN` | `403 FORBIDDEN` | Access forbidden |
-| `DuplicateOperationException` | `DUPLICATE_OPERATION` | `409 CONFLICT` | Duplicate operation detected |
-| `DatabaseException` | `DATABASE_ERROR` | `500 INTERNAL SERVER ERROR` | Database operation failed |
+### Exception Reference Table
+
+| Exception Class | Error Code | HTTP Status Code | Default Message | Typical Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| `ResourceNotFoundException` | `RESOURCE_NOT_FOUND` | `404 NOT FOUND` | Resource not found | Entity (User, Wallet, Project, Request, Session) does not exist |
+| `InsufficientBalanceException` | `WALLET_INSUFFICIENT_BALANCE`| `400 BAD REQUEST` | Insufficient wallet balance | Wallet balance is lower than withdrawal or investment amount |
+| `InvalidOperationException` | `INVALID_OPERATION` | `400 BAD REQUEST` | Invalid operation | Business rule violation (e.g. project not active, $<2$ investors to close) |
+| `UnauthorizedException` | `UNAUTHORIZED` | `401 UNAUTHORIZED`| Authentication credentials were missing or invalid | Missing/expired/invalid JWT, locked account, invalid session |
+| `ForbiddenException` | `FORBIDDEN` | `403 FORBIDDEN` | Access forbidden | Role permission mismatch or attempting to access another user's entity |
+| `DuplicateOperationException` | `DUPLICATE_OPERATION` | `409 CONFLICT` | Duplicate operation detected | Email duplicate, unique constraint violation |
+| `DatabaseException` | `DATABASE_ERROR` | `500 INTERNAL SERVER ERROR` | Database operation failed | Database communication error or unexpected query failure |
+| `RateLimitExceededException` | `RATE_LIMIT_EXCEEDED` | `429 TOO MANY REQUESTS` | Too many requests. Please try again later. | Request threshold exceeded for a specific endpoint window |
 
 ---
 
-## 3. Global Exception Handlers
+## 3. Global Exception Handlers & OpenTelemetry Instrumentation
 
-Registered globally on the FastAPI application instance in `app/core/exception_handlers.py`:
+Global exception handlers are registered in `app/core/exception_handlers.py`. Each handler automatically records the exception into the active OpenTelemetry span via `_record_span_exception`:
 
 ### 1. `AppException` Handler
-Catches all subclasses of `AppException` and returns the structured JSON response matching the exception's `status_code`, `code`, `message`, and `details`.
+Catches all subclasses of `AppException` and maps them directly to the corresponding HTTP status code:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "WALLET_INSUFFICIENT_BALANCE",
+    "message": "Insufficient balance in investor wallet.",
+    "details": null
+  }
+}
+```
 
 ### 2. Pydantic `RequestValidationError` Handler
-Catches request payload schema or parameter validation failures.
+Catches schema validation failures on request bodies, query parameters, and headers:
 - **HTTP Status**: `422 Unprocessable Entity`
 - **Error Code**: `VALIDATION_ERROR`
 - **Response Format**:
@@ -73,43 +87,49 @@ Catches request payload schema or parameter validation failures.
     "message": "Input validation failed",
     "details": [
       {
+        "type": "greater_than",
         "loc": ["body", "amount"],
         "msg": "Input should be greater than 0",
-        "type": "greater_than"
+        "input": 0
       }
     ]
   }
 }
 ```
 
-### 3. SQLAlchemy `IntegrityError` Handler
-Catches database unique constraint or foreign key violations.
+### 3. Rate Limit Exceeded Handler (`RateLimitExceededException`)
+Triggered when an authenticated user exceeds the Redis sliding-window limit for a protected endpoint:
+- **HTTP Status**: `429 Too Many Requests`
+- **Error Code**: `RATE_LIMIT_EXCEEDED`
+- **Response Format**:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests. Please try again later.",
+    "details": {
+      "limit": 5,
+      "window": "60 sec"
+    }
+  }
+}
+```
+
+### 4. SQLAlchemy `IntegrityError` Handler
+Catches database-level unique constraint or foreign key violations:
 - **HTTP Status**: `409 Conflict`
 - **Error Code**: `DUPLICATE_OPERATION`
 - **Message**: `"Database constraint violation or duplicate record"`
 
-### 4. `SQLAlchemyError` Handler
-Catches unexpected database engine errors.
+### 5. `SQLAlchemyError` Handler
+Catches general database engine failures:
 - **HTTP Status**: `500 Internal Server Error`
 - **Error Code**: `DATABASE_ERROR`
 - **Message**: `"A database error occurred while processing your request"`
 
-### 5. Generic `Exception` Handler
-Catches unhandled runtime exceptions.
+### 6. Generic `Exception` Handler
+Catches unhandled runtime exceptions:
 - **HTTP Status**: `500 Internal Server Error`
 - **Error Code**: `INTERNAL_SERVER_ERROR`
 - **Message**: `"An unexpected error occurred"`
-
----
-
-## 4. HTTP Status Code Reference
-
-| Status Code | Description | Typical Triggers |
-| :--- | :--- | :--- |
-| **`400 Bad Request`** | Invalid operation or insufficient wallet balance | Withdrawal exceeding balance; project close with <2 investors; invalid transaction amount |
-| **`401 Unauthorized`** | Authentication failure | Missing, expired, or corrupted `access_token` cookie |
-| **`403 Forbidden`** | Authorization role failure | Investor attempting to access `/admin/*` routes, or admin accessing `/investor/*` routes |
-| **`404 Not Found`** | Missing entity | Requested user ID, wallet UUID, project UUID, or request UUID does not exist |
-| **`409 Conflict`** | Duplicate operation | Idempotency key collision or database unique constraint violation |
-| **`422 Unprocessable Entity`** | Schema validation error | Invalid email format, missing required body field, or invalid enum value |
-| **`500 Internal Server Error`** | Unhandled server error | Database connection breakdown or unhandled exception |

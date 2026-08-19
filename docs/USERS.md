@@ -10,11 +10,11 @@ All user administration endpoints are grouped under the `/admin/users` route pre
 | Field | Type | Required | Default | Description / Validation |
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | `string` | Yes | - | Full name of the user |
-| `email` | `string (EmailStr)` | Yes | - | Valid email address |
-| `password` | `string` | No | `null` | Optional plain text password |
-| `role` | `string` | No | `"investor"` | Role string (`"admin"`, `"admin_dev"`, `"investor"`) |
-| `provider` | `string` | Yes | - | Identity provider (e.g., `"local"`, `"google"`) |
-| `age` | `integer` | No | `null` | Age of user |
+| `email` | `string (EmailStr)` | Yes | - | Unique valid email address |
+| `password` | `string` | No | `null` | Optional plain text password (hashed via bcrypt if provided) |
+| `role` | `string` | No | `"investor"` | Requested user role (`"investor"`, `"admin"`, `"admin_dev"`) |
+| `provider` | `string` | Yes | - | Identity provider label (e.g. `"local"`, `"google"`) |
+| `age` | `integer` | No | `null` | Optional user age |
 
 ### `UserUpdate` (Request Body)
 | Field | Type | Required | Default | Description / Validation |
@@ -26,89 +26,83 @@ All user administration endpoints are grouped under the `/admin/users` route pre
 ### `UserResponse` (Response Schema)
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `uuid` | `string (UUID)` | Unique user UUID |
-| `name` | `string` | Full name of user |
-| `email` | `string` | Email address |
+| `uuid` | `string (UUID)` | Unique User UUID identifier |
+| `name` | `string` | User full name |
+| `email` | `string (EmailStr)` | Email address |
 | `age` | `integer \| null` | User age |
-| `role` | `string (UserRole)` | User role (`admin`, `admin_dev`, `investor`) |
+| `role` | `string (UserRole)` | Current assigned role enum: `admin`, `admin_dev`, `investor` |
 
 ---
 
-## Endpoints
+## Endpoints Catalog
 
 ### 1. POST `/admin/users`
 - **Role / Access**: Admin Only (`require_admin`)
-- **Summary**: Create user
-- **Description**: Allows administrators to create a new user account in the system.
+- **Summary**: Create user account
+- **Description**: Creates a new user profile with local credentials or provider registration.
 - **Headers**: `Content-Type: application/json`
-- **Cookies**: `access_token` (Required)
+- **Cookies / Bearer**: `access_token` (Required)
 - **Request Body (`UserCreate`)**:
 ```json
 {
   "name": "Jane Doe",
   "email": "jane.doe@example.com",
-  "password": "secretpassword123",
+  "password": "SecurePassword123!",
   "role": "investor",
   "provider": "local",
-  "age": 30
+  "age": 29
 }
 ```
-- **Response (`201 Created` / `200 OK - UserResponse`)**:
-```json
-{
-  "uuid": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-  "name": "Jane Doe",
-  "email": "jane.doe@example.com",
-  "age": 30,
-  "role": "investor"
-}
-```
-- **Errors**:
-  - `401 Unauthorized`: Missing or invalid `access_token` cookie.
-  - `403 Forbidden`: User is not an admin.
-  - `409 Conflict` / `400 Bad Request`: Email already exists.
-  - `422 Unprocessable Entity`: Input validation failure.
-
----
-
-### 2. GET `/admin/users/{user_id}`
-- **Role / Access**: Admin Only (`require_admin`)
-- **Summary**: Get user details
-- **Description**: Retrieves detailed profile information for a specific user by their database integer ID (`user_id`).
-- **Headers**: None
-- **Cookies**: `access_token` (Required)
-- **Path Parameters**:
-  - `user_id` (`integer`, Required): Integer ID of the user.
-- **Request Body**: None
 - **Response (`200 OK - UserResponse`)**:
 ```json
 {
   "uuid": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
   "name": "Jane Doe",
   "email": "jane.doe@example.com",
-  "age": 30,
+  "age": 29,
+  "role": "investor"
+}
+```
+- **Errors**:
+  - `401 Unauthorized`: Missing or invalid authentication token.
+  - `403 Forbidden`: Admin privileges required.
+  - `409 Conflict`: Email address already registered (`DUPLICATE_OPERATION`).
+  - `422 Unprocessable Entity`: Input validation failure.
+
+---
+
+### 2. GET `/admin/users/get/{user_id}`
+- **Role / Access**: Admin Only (`require_admin`)
+- **Summary**: Get user details
+- **Description**: Retrieves full profile information for a specific user by their unique UUID.
+- **Path Parameters**:
+  - `user_id` (`string (UUID)`, Required): UUID of the user.
+- **Response (`200 OK - UserResponse`)**:
+```json
+{
+  "uuid": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "age": 29,
   "role": "investor"
 }
 ```
 - **Errors**:
   - `401 Unauthorized`: Not authenticated.
   - `403 Forbidden`: Admin role required.
-  - `404 Not Found`: User with specified ID does not exist.
+  - `404 Not Found`: User with specified UUID does not exist.
 
 ---
 
 ### 3. GET `/admin/users`
 - **Role / Access**: Admin Only (`require_admin`)
 - **Summary**: List all users
-- **Description**: Retrieves a paginated list of user accounts with sorting options.
-- **Headers**: None
-- **Cookies**: `access_token` (Required)
+- **Description**: Retrieves a paginated list of user profiles with sorting and offset controls.
 - **Query Parameters**:
-  - `limit` (`integer`, Optional, Default: `10`, Max: `100`): Maximum records to return.
-  - `skip` (`integer`, Optional, Default: `0`, Min: `0`): Offset count.
-  - `sort_by` (`string`, Optional, Default: `"id"`): Field name to sort by.
-  - `order` (`string`, Optional, Default: `"asc"`): Order direction (`"asc"` or `"desc"`).
-- **Request Body**: None
+  - `limit` (`integer`, Optional, Default: `10`, Max: `100`): Maximum records per query.
+  - `skip` (`integer`, Optional, Default: `0`, Min: `0`): Offset record count.
+  - `sort_by` (`string`, Optional, Default: `"id"`): Column name to sort by.
+  - `order` (`string`, Optional, Default: `"asc"`): Sort direction (`"asc"` or `"desc"`).
 - **Response (`200 OK - List[UserResponse]`)**:
 ```json
 [
@@ -116,7 +110,7 @@ All user administration endpoints are grouped under the `/admin/users` route pre
     "uuid": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
     "name": "Jane Doe",
     "email": "jane.doe@example.com",
-    "age": 30,
+    "age": 29,
     "role": "investor"
   }
 ]
@@ -127,32 +121,29 @@ All user administration endpoints are grouped under the `/admin/users` route pre
 
 ---
 
-### 4. PUT `/admin/users/{user_id}`
+### 4. GET `/admin/users/users`
+- **Role / Access**: Admin Only (`require_admin`)
+- **Summary**: Get all users alias
+- **Description**: Convenient administrative alias returning up to 100 users ordered by ID ascending.
+- **Response (`200 OK - List[UserResponse]`)**: Array of `UserResponse` objects.
+
+---
+
+### 5. PUT `/admin/users/{user_id}`
 - **Role / Access**: Admin Only (`require_admin`)
 - **Summary**: Update user details
-- **Description**: Updates profile information for an existing user account identified by integer ID.
-- **Headers**: `Content-Type: application/json`
-- **Cookies**: `access_token` (Required)
+- **Description**: Updates profile details (name, age, role) for an existing user identified by UUID.
 - **Path Parameters**:
-  - `user_id` (`integer`, Required): Integer ID of the user.
+  - `user_id` (`string (UUID)`, Required): UUID of the user to update.
 - **Request Body (`UserUpdate`)**:
 ```json
 {
-  "name": "Jane Updated",
-  "age": 31,
-  "role": "investor"
+  "name": "Jane Doe Updated",
+  "age": 30,
+  "role": "admin"
 }
 ```
-- **Response (`200 OK - UserResponse`)**:
-```json
-{
-  "uuid": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
-  "name": "Jane Updated",
-  "email": "jane.doe@example.com",
-  "age": 31,
-  "role": "investor"
-}
-```
+- **Response (`200 OK - UserResponse`)**: Updated user profile.
 - **Errors**:
   - `401 Unauthorized`: Not authenticated.
   - `403 Forbidden`: Admin role required.
@@ -160,16 +151,18 @@ All user administration endpoints are grouped under the `/admin/users` route pre
 
 ---
 
-### 5. DELETE `/admin/users/{user_id}`
+### 6. DELETE `/admin/users/{user_id}`
 - **Role / Access**: Admin Only (`require_admin`)
 - **Summary**: Delete user account
-- **Description**: Deletes a user account from the system by integer ID.
-- **Headers**: None
-- **Cookies**: `access_token` (Required)
+- **Description**: Deletes a user profile from the database by UUID.
 - **Path Parameters**:
-  - `user_id` (`integer`, Required): Integer ID of the user.
-- **Request Body**: None
-- **Response (`200 OK`)**: Service output or deletion confirmation.
+  - `user_id` (`string (UUID)`, Required): UUID of the user to delete.
+- **Response (`200 OK`)**:
+```json
+{
+  "message": "User deleted"
+}
+```
 - **Errors**:
   - `401 Unauthorized`: Not authenticated.
   - `403 Forbidden`: Admin role required.

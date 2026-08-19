@@ -1,48 +1,39 @@
-# Production Pagination Architecture & Reusability Guide
+# Pagination Architecture & Reusability Guide
 
-This document provides a comprehensive reference for the production-grade pagination system implemented across the application. It details how the **Keyset (Cursor-Based) Pagination** and **Limit-Offset Fallback** operate, how to reuse the system for new endpoints (e.g., Wallets, Investments, Projects), and the underlying SQLAlchemy B-Tree index optimizations.
+This document details the standardized pagination system implemented across the application (`app/common/pagination.py`). It explains the architecture of the Page/Limit pagination utility, response schema envelopes, repository helpers, and database index optimizations.
 
 ---
 
 ## 1. Core Architecture & Layers
 
-The implementation strictly enforces Clean Architecture across 4 core layers:
+Pagination follows Clean Architecture across all layers:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      1. Router                           │
-│   Receives HTTP requests & binds query params:           │
-│   - cursor & limit (Keyset mode)                         │
-│   - page & size (Offset mode)                            │
+│   Binds query params via PaginationParams:               │
+│   - page (default: 1, min: 1)                            │
+│   - limit (default: 20, min: 1, max: 100)                │
 └────────────────────────────┬─────────────────────────────┘
                              │
                              ▼
 ┌──────────────────────────────────────────────────────────┐
-│                     2. Controller                        │
-│   Orchestrates request flow between FastAPI dependency   │
-│   injections and application services.                   │
+│                     2. Service                           │
+│   Calls repository and returns PaginatedResponse[DTO].   │
 └────────────────────────────┬─────────────────────────────┘
                              │
                              ▼
 ┌──────────────────────────────────────────────────────────┐
-│                     3. Service                           │
-│   Applies domain constraints, business security rules,   │
-│   and default boundary limits.                           │
+│                    3. Repository                         │
+│   Constructs base SQLAlchemy Query and passes to         │
+│   PaginationHelper.paginate_query().                     │
 └────────────────────────────┬─────────────────────────────┘
                              │
                              ▼
 ┌──────────────────────────────────────────────────────────┐
-│                    4. Repository                         │
-│   Constructs base SQLAlchemy query and delegates to      │
-│   PaginationHelper for index-backed pagination.          │
-└────────────────────────────┬─────────────────────────────┘
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────┐
-│               5. PaginationHelper                        │
-│   Encodes opaque base64 cursors, applies tuple comparison│
-│   WHERE (created_at, id) < (cursor_time, cursor_id),     │
-│   and returns standardized PaginatedResponse schemas.    │
+│               4. PaginationHelper                        │
+│   Executes COUNT(*), applies OFFSET and LIMIT, orders by │
+│   (created_at DESC, id DESC), and computes metadata.     │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -54,94 +45,136 @@ The implementation strictly enforces Clean Architecture across 4 core layers:
 
 | Class / Component | Type | Responsibility |
 | :--- | :--- | :--- |
-| `PaginationParams` | Pydantic Model / FastAPI Dependency | Accepts query parameters (`cursor`, `limit`, `page`, `size`), validates constraints (`limit` $\le 100$), and auto-detects cursor vs offset mode. |
-| `CursorEncoder` | Base64 Utility | Encodes compound tuple keys `(created_at, id)` into opaque, URL-safe Base64 strings and decodes them back to native Python types. |
-| `CursorPaginationMeta` | Pydantic Model | Metadata schema for Keyset mode: returns `next_cursor`, `limit`, and `has_next`. |
-| `OffsetPaginationMeta` | Pydantic Model | Metadata schema for Offset mode: returns `page`, `size`, `total`, and `total_pages`. |
-| `PaginatedResponse[T]` | Generic Pydantic Model | Standardized response envelope containing `data: List[T]` and `pagination: Union[CursorPaginationMeta, OffsetPaginationMeta]`. |
-| `PaginationHelper` | Static Helper Class | Applies keyset SQL filters, deterministic sorting (`created_at DESC, id DESC`), peek fetching (`limit + 1`), or count-offset queries. |
+| `PaginationParams` | Pydantic Model / FastAPI Dependency | Binds and validates query parameters (`page: int = 1`, `limit: int = 20`, max `100`). |
+| `PagePaginationMeta` | Pydantic Model | Metadata schema returning `page`, `limit`, `total`, `total_pages`, `has_next`, and `has_prev`. |
+| `PaginatedResponse[T]` | Generic Pydantic Model | Standardized response envelope containing `data: List[T]` and `pagination: PagePaginationMeta`. |
+| `PaginationHelper` | Static Helper Class | Applies SQL offset, limit, count calculation, and deterministic descending sorting (`created_at DESC, id DESC`). |
+
+### 2.2. Schema Definitions
+
+```python
+class PaginationParams(BaseModel):
+    page: int = Field(1, ge=1, description="Page number (1-based index)")
+    limit: int = Field(20, ge=1, le=100, description="Items per page")
+
+
+class PagePaginationMeta(BaseModel):
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    model_config = ConfigDict(from_attributes=True)
+
+    data: List[T]
+    pagination: PagePaginationMeta
+```
 
 ---
 
-## 3. How to Plug Pagination into New Endpoints
+## 3. Standard JSON Response Format
 
-To add pagination to any entity (e.g. `Wallet`, `Investment`, `Project`), follow these 3 steps:
+Paginated endpoints (e.g. `GET /investor/transactions/user/{user_id}?page=1&limit=20`) return data structured as follows:
 
-### Step 1: Add a Composite B-Tree Index to your SQLAlchemy Model
+```json
+{
+  "data": [
+    {
+      "uuid": "c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f",
+      "user_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "wallet_id": "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e",
+      "amount": "250.00",
+      "currency": "USD",
+      "type": "deposit",
+      "status": "success",
+      "description": "Initial funding",
+      "created_at": "2026-08-19T08:15:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 125,
+    "total_pages": 7,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
 
-Ensure your model has a compound index covering the filtering foreign key, `created_at`, and `id`:
+---
+
+## 4. How to Plug Pagination into New Entities
+
+To add pagination to any entity (e.g. `Wallet`, `Investment`, `Project`), follow these steps:
+
+### Step 1: Ensure Composite Index on Model
+Ensure your SQLAlchemy model has an index covering filter foreign keys and sorting columns (`created_at`, `id`):
 
 ```python
 from sqlalchemy import Index
 
-class Wallet(Base):
-    __tablename__ = "wallets"
+class Transaction(Base):
+    __tablename__ = "transactions"
     __table_args__ = (
-        Index("idx_wallets_user_created_id", "user_id", "created_at", "id"),
+        Index("idx_transactions_user_created_id", "user_id", "created_at", "id"),
     )
-    # ... columns ...
 ```
 
-### Step 2: Use `PaginationHelper.paginate_query()` in your Repository
+### Step 2: Use `PaginationHelper.paginate_query()` in Repository
 
 ```python
 from app.common.pagination import PaginationParams, PaginationHelper
+from app.business.transaction.model.transaction import Transaction
 
-class WalletRepository:
+class TransactionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_user_wallets_paginated(self, user_id: UUID, params: PaginationParams):
-        query = self.db.query(Wallet).filter(Wallet.user_id == user_id)
+    async def get_by_sender_id_paginated(self, user_id: UUID, params: PaginationParams):
+        query = self.db.query(Transaction).filter(Transaction.user_id == user_id)
         return PaginationHelper.paginate_query(
             query=query,
-            model_class=Wallet,
+            model_class=Transaction,
             params=params,
-            created_at_col=Wallet.created_at,
-            id_col=Wallet.id
+            created_at_col=Transaction.created_at,
+            id_col=Transaction.id
         )
 ```
 
-### Step 3: Wire Controller and Router with `PaginationParams`
+### Step 3: Implement Service Layer Method
 
 ```python
-# Router
-@router.get("/user/{user_id}", response_model=PaginatedResponse[WalletResponse])
-def get_user_wallets(
-    user_id: UUID,
-    params: PaginationParams = Depends(),
-    controller: WalletController = Depends(get_wallet_controller)
-):
-    return controller.get_user_wallets(user_id, params)
+class TransactionService:
+    def __init__(self, repo: TransactionRepository):
+        self.repo = repo
+
+    async def get_sender_transactions_paginated(
+        self,
+        user_id: UUID,
+        params: PaginationParams
+    ) -> PaginatedTransactionResponse:
+        items, meta = await self.repo.get_by_sender_id_paginated(user_id, params)
+        return PaginatedTransactionResponse(data=items, pagination=meta)
 ```
 
----
+### Step 4: Expose in Router
 
-## 4. Query & Index Performance Benchmark
-
-### Why Keyset Pagination Scales to Millions of Rows
-
-1. **Direct Index Seeking vs Table Scanning**:
-   - **Limit-Offset (`OFFSET 100000 LIMIT 20`)**: Database must traverse and discard 100,000 rows in memory. Performance degrades linearly $O(N)$ as page depth increases.
-   - **Keyset Cursor (`WHERE (created_at, id) < (cursor_time, cursor_id)`)**: Database uses standard B-Tree index lookup to jump directly to the target record location in logarithmic time **$O(\log N)$**.
-
-2. **Peeking `limit + 1` Rows**:
-   - For cursor requests, `PaginationHelper` fetches `limit + 1` items. If a `limit + 1`-th row is returned, `has_next` is set to `True`, completely avoiding an expensive `SELECT COUNT(*)` query over large datasets.
-
-3. **Composite Index Alignment**:
-   - Index `idx_transactions_user_created_id` (`user_id`, `created_at`, `id`) fulfills both the equality filter (`WHERE user_id = :id`), the range filter (`< cursor_time`), and the descending sort (`ORDER BY created_at DESC, id DESC`) without in-memory sorting (`filesort`).
-
----
-
-## 5. Docker Container Execution Commands
-
-All commands should be executed inside the container environment using `docker compose exec`:
-
-```bash
-# Run Database Migrations
-docker compose exec api alembic revision --autogenerate -m "Add transaction pagination composite index"
-docker compose exec api alembic upgrade head
-
-# Inspect Logs
-docker compose logs -f api
+```python
+@router.get(
+    "/user/{user_id}",
+    response_model=PaginatedTransactionResponse,
+    summary="Get paginated transactions by sender ID"
+)
+async def get_by_sender(
+    user_id: UUID,
+    params: PaginationParams = Depends(),
+    service: TransactionService = Depends(get_transaction_service),
+    current_user: User = Depends(get_current_user)
+):
+    return await service.get_sender_transactions_paginated(user_id, params)
 ```
